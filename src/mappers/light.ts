@@ -20,7 +20,7 @@ export const lightMapper: Mapper = {
       {
         topic: discoveryTopic(config, 'light', objectId),
         payload: {
-          name: device.name,
+          name: null,
           unique_id: objectId,
           object_id: objectId,
           state_topic: stateTopic(config, device.address),

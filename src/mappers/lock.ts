@@ -20,7 +20,7 @@ export const lockMapper: Mapper = {
       {
         topic: discoveryTopic(config, 'lock', objectId),
         payload: {
-          name: device.name,
+          name: null,
           unique_id: objectId,
           object_id: objectId,
           state_topic: stateTopic(config, device.address),
