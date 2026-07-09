@@ -2,6 +2,7 @@ import type { ArcusDevice } from './types.js';
 import {
   Base, Device, DevicePower, Switch, Dimmer, Thermostat, Temperature,
   RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Camera, Button,
+  MotorizedDoor,
 } from './capabilities.js';
 
 export function createMockDevices(): ArcusDevice[] {
@@ -147,6 +148,19 @@ export function createMockDevices(): ArcusDevice[] {
         [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
         [DevicePower.ATTR_BATTERY]: 78,
         [Device.ATTR_DEVTYPEHINT]: 'Lock',
+      },
+    },
+
+    // --- Garage Door Opener ---
+    {
+      address: 'DRIV:dev:garage-001',
+      name: 'Garage Door',
+      type: 'Nortek GoControl Garage Door Controller',
+      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, MotorizedDoor.NAMESPACE]),
+      attributes: {
+        [MotorizedDoor.ATTR_DOORSTATE]: MotorizedDoor.DOORSTATE_CLOSED,
+        [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_LINE,
+        [Device.ATTR_DEVTYPEHINT]: 'Garage Door',
       },
     },
 

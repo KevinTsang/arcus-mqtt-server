@@ -35,6 +35,7 @@ import { lightMapper } from './light.js';
 import { climateMapper } from './climate.js';
 import { binarySensorMapper } from './binary-sensor.js';
 import { lockMapper } from './lock.js';
+import { coverMapper } from './cover.js';
 import { cameraMapper } from './camera.js';
 import { sensorMapper } from './sensor.js';
 import { deviceTriggerMapper } from './device-trigger.js';
@@ -46,6 +47,7 @@ export const mappers: Mapper[] = [
   climateMapper,
   binarySensorMapper,
   lockMapper,
+  coverMapper,
   cameraMapper,
   sensorMapper,
   deviceTriggerMapper,
