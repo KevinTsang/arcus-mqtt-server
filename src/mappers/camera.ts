@@ -20,7 +20,7 @@ export const cameraMapper: Mapper = {
       {
         topic: discoveryTopic(config, 'camera', objectId),
         payload: {
-          name: device.name,
+          name: null,
           unique_id: objectId,
           object_id: objectId,
           device: buildDeviceInfo(config, device),

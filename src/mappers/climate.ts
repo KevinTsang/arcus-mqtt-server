@@ -41,7 +41,7 @@ export const climateMapper: Mapper = {
       {
         topic: discoveryTopic(config, 'climate', objectId),
         payload: {
-          name: device.name,
+          name: null,
           unique_id: objectId,
           object_id: objectId,
           state_topic: stateTopic(config, device.address),
