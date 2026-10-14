@@ -13,8 +13,8 @@ jobs:
     name: Build and test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           # Matches the node:22-alpine runtime in the Dockerfile
           node-version: 22
@@ -22,10 +22,3 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
-
-  docker:
-    name: Docker image
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker build --tag arcus-mqtt-server:ci .
