@@ -4,7 +4,7 @@ import {
   RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Button,
   MotorizedDoor, Smoke, CarbonMonoxide, Glass, Tilt, PowerUse,
   Hub, HubConnection, HubPower, DeviceAdvanced,
-  Valve, Shade,
+  Color, ColorTemperature, Light, Valve, Shade,
 } from './capabilities.js';
 
 export function createMockDevices(): ArcusDevice[] {
@@ -46,6 +46,26 @@ export function createMockDevices(): ArcusDevice[] {
         [Dimmer.ATTR_BRIGHTNESS]: 75,
         [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_LINE,
         [Device.ATTR_DEVTYPEHINT]: 'Dimmer',
+      },
+    },
+
+    // --- Color bulb ---
+    {
+      address: 'DRIV:dev:bulb-001',
+      name: 'Living Room Bulb',
+      type: 'Sengled Color Plus',
+      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Switch.NAMESPACE, Dimmer.NAMESPACE, Light.NAMESPACE, Color.NAMESPACE, ColorTemperature.NAMESPACE]),
+      attributes: {
+        [Switch.ATTR_STATE]: Switch.STATE_ON,
+        [Dimmer.ATTR_BRIGHTNESS]: 80,
+        [Light.ATTR_COLORMODE]: Light.COLORMODE_COLOR,
+        [Color.ATTR_HUE]: 200,
+        [Color.ATTR_SATURATION]: 70,
+        [ColorTemperature.ATTR_COLORTEMP]: 3000,
+        [ColorTemperature.ATTR_MINCOLORTEMP]: 2000,
+        [ColorTemperature.ATTR_MAXCOLORTEMP]: 6500,
+        [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_LINE,
+        [Device.ATTR_DEVTYPEHINT]: 'Light',
       },
     },
 

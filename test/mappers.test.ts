@@ -7,6 +7,7 @@ import { hubMapper } from '../src/mappers/hub.js';
 import { climateMapper } from '../src/mappers/climate.js';
 import { valveMapper } from '../src/mappers/valve.js';
 import { shadeMapper } from '../src/mappers/shade.js';
+import { lightMapper } from '../src/mappers/light.js';
 import { matchingMappers } from '../src/mappers/index.js';
 import type { Mapper } from '../src/mappers/index.js';
 import type { ArcusAttributes } from '../src/arcus/types.js';
@@ -237,6 +238,60 @@ describe('shade mapper', () => {
   it('clamps positions and rejects junk', () => {
     assert.deepEqual(cmd('shade_position', '150'), { 'shade:level': 100 });
     assert.equal(cmd('shade_position', 'abc'), null);
+  });
+});
+
+describe('light mapper', () => {
+  const bulb = (attrs: ArcusAttributes = {}, caps = ['swit', 'dim', 'light', 'color', 'colortemp']) =>
+    makeDevice('DRIV:dev:b1', caps, {
+      'swit:state': 'ON', 'dim:brightness': 80, 'color:hue': 200, 'color:saturation': 70,
+      'colortemp:colortemp': 3000, 'colortemp:mincolortemp': 2000, 'colortemp:maxcolortemp': 6500, ...attrs,
+    });
+  const cmd = (entity: string, payload: string, device = bulb()) => lightMapper.handleCommand(config, device, entity, payload);
+
+  it('adds color and color temperature controls only for bulbs that have them', () => {
+    const [color] = lightMapper.buildDiscovery(config, bulb());
+    assert.ok(color.payload.hs_command_topic);
+    assert.equal(color.payload.color_temp_kelvin, true);
+    assert.equal(color.payload.min_kelvin, 2000);
+
+    const [dimmer] = lightMapper.buildDiscovery(config, bulb({}, ['swit', 'dim']));
+    assert.equal(dimmer.payload.hs_command_topic, undefined);
+    assert.equal(dimmer.payload.color_temp_command_topic, undefined);
+  });
+
+  it('reports only the values for the current color mode', () => {
+    const color = lightMapper.buildState(config, bulb({ 'light:colormode': 'COLOR' }));
+    assert.equal(color.light_hs, '200,70');
+    assert.equal(color.light_color_temp, undefined);
+
+    const temp = lightMapper.buildState(config, bulb({ 'light:colormode': 'COLORTEMP' }));
+    assert.equal(temp.light_color_temp, 3000);
+    assert.equal(temp.light_hs, undefined);
+
+    const normal = lightMapper.buildState(config, bulb({ 'light:colormode': 'NORMAL' }));
+    assert.equal(normal.light_hs, undefined);
+    assert.equal(normal.light_color_temp, undefined);
+  });
+
+  it('sets color and switches the bulb into color mode', () => {
+    assert.deepEqual(cmd('light_hs', '120.4,55.6'), { 'color:hue': 120, 'color:saturation': 56, 'light:colormode': 'COLOR' });
+  });
+
+  it('sets color temperature within the bulb range', () => {
+    assert.deepEqual(cmd('light_color_temp', '4000'), { 'colortemp:colortemp': 4000, 'light:colormode': 'COLORTEMP' });
+    assert.deepEqual(cmd('light_color_temp', '9000'), { 'colortemp:colortemp': 6500, 'light:colormode': 'COLORTEMP' });
+  });
+
+  it('rejects malformed color and brightness values', () => {
+    assert.equal(cmd('light_hs', 'red'), null);
+    assert.equal(cmd('light_color_temp', 'warm'), null);
+    assert.equal(cmd('light_brightness', 'bright'), null);
+  });
+
+  it('clamps brightness and turns the light on when brightening', () => {
+    assert.deepEqual(cmd('light_brightness', '140'), { 'dim:brightness': 100, 'swit:state': 'ON' });
+    assert.deepEqual(cmd('light_brightness', '0'), { 'dim:brightness': 0 });
   });
 });
 

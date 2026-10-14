@@ -22,7 +22,7 @@ Arcus Platform ──► Arcus MQTT Server ──► Embedded MQTT Broker ──
 | Device | HA Component | Capabilities |
 |--------|-------------|--------------|
 | Switch | `switch` | On/off control |
-| Dimmer | `light` | On/off, brightness (JSON schema) |
+| Dimmer / bulb | `light` | On/off, brightness; color (hue/saturation) and color temperature for bulbs that support them |
 | Thermostat | `climate` | Mode, setpoints, current temp, heating/cooling/idle, fan (off/on or speeds), ECO preset |
 | Contact sensor | `binary_sensor` | Door/window open/closed |
 | Motion sensor | `binary_sensor` | Motion detected/clear |
@@ -155,7 +155,7 @@ src/
 └── mappers/
     ├── index.ts          # Mapper interface & registry
     ├── switch.ts         # swit → switch
-    ├── light.ts          # dim → light (JSON schema)
+    ├── light.ts          # dim/color/colortemp → light
     ├── climate.ts        # therm → climate
     ├── binary-sensor.ts  # cont/mot/leakh2o/smoke/co/glass/tilt → binary_sensor
     ├── lock.ts           # doorlock → lock
