@@ -4,7 +4,7 @@ import {
   RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Button,
   MotorizedDoor, Smoke, CarbonMonoxide, Glass, Tilt, PowerUse,
   Hub, HubConnection, HubPower, DeviceAdvanced,
-  Valve,
+  Valve, Shade,
 } from './capabilities.js';
 
 export function createMockDevices(): ArcusDevice[] {
@@ -214,6 +214,21 @@ export function createMockDevices(): ArcusDevice[] {
         [Valve.ATTR_VALVESTATE]: Valve.VALVESTATE_OPEN,
         [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_LINE,
         [Device.ATTR_DEVTYPEHINT]: 'Water Valve',
+      },
+    },
+
+    // --- Shade ---
+    {
+      address: 'DRIV:dev:shade-001',
+      name: 'Bedroom Shade',
+      type: 'Somfy Shade',
+      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Shade.NAMESPACE]),
+      attributes: {
+        [Shade.ATTR_LEVEL]: 60,
+        [Shade.ATTR_SHADESTATE]: Shade.SHADESTATE_OK,
+        [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
+        [DevicePower.ATTR_BATTERY]: 75,
+        [Device.ATTR_DEVTYPEHINT]: 'Shade',
       },
     },
 

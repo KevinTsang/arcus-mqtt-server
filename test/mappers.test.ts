@@ -6,6 +6,7 @@ import { lockMapper } from '../src/mappers/lock.js';
 import { hubMapper } from '../src/mappers/hub.js';
 import { climateMapper } from '../src/mappers/climate.js';
 import { valveMapper } from '../src/mappers/valve.js';
+import { shadeMapper } from '../src/mappers/shade.js';
 import { matchingMappers } from '../src/mappers/index.js';
 import type { Mapper } from '../src/mappers/index.js';
 import type { ArcusAttributes } from '../src/arcus/types.js';
@@ -212,6 +213,30 @@ describe('valve mapper', () => {
     assert.deepEqual(valveMapper.handleCommand(config, valve(), 'valve', 'CLOSE'), { 'valv:valvestate': 'CLOSED' });
     assert.deepEqual(valveMapper.handleCommand(config, valve(), 'valve', 'OPEN'), { 'valv:valvestate': 'OPEN' });
     assert.equal(valveMapper.handleCommand(config, valve(), 'valve', 'STOP'), null);
+  });
+});
+
+describe('shade mapper', () => {
+  const shade = makeDevice('DRIV:dev:sh1', ['shade'], { 'shade:level': 60 });
+  const cmd = (entity: string, payload: string) => shadeMapper.handleCommand(config, shade, entity, payload);
+
+  it('maps a shade to a positionable cover', () => {
+    const [disc] = shadeMapper.buildDiscovery(config, shade);
+    assert.equal(disc.topic, 'homeassistant/cover/arcus/sh1_shade/config');
+    assert.equal(disc.payload.device_class, 'shade');
+    assert.equal(disc.payload.payload_stop, null);
+    assert.deepEqual(shadeMapper.buildState(config, shade), { shade_position: 60 });
+  });
+
+  it('opens, closes and moves to a position through the level', () => {
+    assert.deepEqual(cmd('shade', 'OPEN'), { 'shade:level': 100 });
+    assert.deepEqual(cmd('shade', 'CLOSE'), { 'shade:level': 0 });
+    assert.deepEqual(cmd('shade_position', '35'), { 'shade:level': 35 });
+  });
+
+  it('clamps positions and rejects junk', () => {
+    assert.deepEqual(cmd('shade_position', '150'), { 'shade:level': 100 });
+    assert.equal(cmd('shade_position', 'abc'), null);
   });
 });
 
