@@ -1,5 +1,5 @@
 import type { ArcusDevice } from '../arcus/types.js';
-import { Contact, Motion, LeakH2O } from '../arcus/capabilities.js';
+import { Contact, Motion, LeakH2O, Smoke, CarbonMonoxide } from '../arcus/capabilities.js';
 import type { Config } from '../config.js';
 import type { HADiscoveryConfig } from '../ha/discovery.js';
 import { buildDeviceInfo, buildAvailability } from '../ha/discovery.js';
@@ -36,6 +36,20 @@ const BINARY_SENSOR_DEFS: BinarySensorDef[] = [
     deviceClass: 'moisture',
     suffix: 'leak',
   },
+  {
+    cap: Smoke.NAMESPACE,
+    attribute: Smoke.ATTR_SMOKE,
+    onValue: Smoke.SMOKE_DETECTED,
+    deviceClass: 'smoke',
+    suffix: 'smoke',
+  },
+  {
+    cap: CarbonMonoxide.NAMESPACE,
+    attribute: CarbonMonoxide.ATTR_CO,
+    onValue: CarbonMonoxide.CO_DETECTED,
+    deviceClass: 'carbon_monoxide',
+    suffix: 'co',
+  },
 ];
 
 function resolveContactDeviceClass(device: ArcusDevice): string {
@@ -44,7 +58,7 @@ function resolveContactDeviceClass(device: ArcusDevice): string {
   return 'door';
 }
 
-/** Maps Arcus cont/mot/leakh2o → HA binary_sensor */
+/** Maps Arcus cont/mot/leakh2o/smoke/co → HA binary_sensor */
 export const binarySensorMapper: Mapper = {
   matches(device: ArcusDevice): boolean {
     return BINARY_SENSOR_DEFS.some(def => device.caps.has(def.cap));

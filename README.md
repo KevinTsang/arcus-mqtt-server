@@ -26,6 +26,8 @@ Arcus Platform ──► Arcus MQTT Server ──► Embedded MQTT Broker ──
 | Contact sensor | `binary_sensor` | Door/window open/closed |
 | Motion sensor | `binary_sensor` | Motion detected/clear |
 | Leak sensor | `binary_sensor` | Water leak detected/safe |
+| Smoke detector | `binary_sensor` | Smoke detected/safe |
+| CO detector | `binary_sensor` | Carbon monoxide detected/safe |
 | Door lock | `lock` | Lock/unlock |
 | Camera | `camera` | Discovery only |
 | Temperature | `sensor` | Temperature reading |
@@ -139,7 +141,7 @@ src/
     ├── switch.ts         # swit → switch
     ├── light.ts          # dim → light (JSON schema)
     ├── climate.ts        # therm → climate
-    ├── binary-sensor.ts  # cont/mot/leakh2o → binary_sensor
+    ├── binary-sensor.ts  # cont/mot/leakh2o/smoke/co → binary_sensor
     ├── lock.ts           # doorlock → lock
     ├── camera.ts         # camera → camera
     ├── sensor.ts         # temp/humid/battery → sensor

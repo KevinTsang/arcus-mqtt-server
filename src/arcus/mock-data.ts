@@ -2,7 +2,7 @@ import type { ArcusDevice } from './types.js';
 import {
   Base, Device, DevicePower, Switch, Dimmer, Thermostat, Temperature,
   RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Camera, Button,
-  MotorizedDoor,
+  MotorizedDoor, Smoke, CarbonMonoxide,
 } from './capabilities.js';
 
 export function createMockDevices(): ArcusDevice[] {
@@ -176,6 +176,21 @@ export function createMockDevices(): ArcusDevice[] {
         [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
         [DevicePower.ATTR_BATTERY]: 95,
         [Device.ATTR_DEVTYPEHINT]: 'Water Leak',
+      },
+    },
+
+    // --- Smoke / CO Detector ---
+    {
+      address: 'DRIV:dev:smokeco-001',
+      name: 'Hallway Smoke Detector',
+      type: 'First Alert ZCOMBO',
+      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Smoke.NAMESPACE, CarbonMonoxide.NAMESPACE]),
+      attributes: {
+        [Smoke.ATTR_SMOKE]: Smoke.SMOKE_SAFE,
+        [CarbonMonoxide.ATTR_CO]: CarbonMonoxide.CO_SAFE,
+        [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
+        [DevicePower.ATTR_BATTERY]: 90,
+        [Device.ATTR_DEVTYPEHINT]: 'Smoke/CO',
       },
     },
 
