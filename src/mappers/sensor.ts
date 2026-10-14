@@ -1,5 +1,5 @@
 import type { ArcusDevice } from '../arcus/types.js';
-import { Temperature, RelativeHumidity, DevicePower } from '../arcus/capabilities.js';
+import { Temperature, RelativeHumidity, DevicePower, PowerUse } from '../arcus/capabilities.js';
 import type { Config } from '../config.js';
 import type { HADiscoveryConfig } from '../ha/discovery.js';
 import { buildDeviceInfo, buildAvailability } from '../ha/discovery.js';
@@ -40,9 +40,25 @@ const SENSOR_DEFS: SensorDef[] = [
     suffix: 'battery',
     stateClass: 'measurement',
   },
+  {
+    cap: PowerUse.NAMESPACE,
+    attribute: PowerUse.ATTR_INSTANTANEOUS,
+    deviceClass: 'power',
+    unit: 'W',
+    suffix: 'power',
+    stateClass: 'measurement',
+  },
+  {
+    cap: PowerUse.NAMESPACE,
+    attribute: PowerUse.ATTR_CUMULATIVE,
+    deviceClass: 'energy',
+    unit: 'Wh',
+    suffix: 'energy',
+    stateClass: 'total_increasing',
+  },
 ];
 
-/** Maps Arcus temp/humid/devpow(battery) → HA sensor */
+/** Maps Arcus temp/humid/devpow(battery)/pow → HA sensor */
 export const sensorMapper: Mapper = {
   matches(device: ArcusDevice): boolean {
     return SENSOR_DEFS.some(def => {

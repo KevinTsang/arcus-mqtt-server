@@ -2,7 +2,7 @@ import type { ArcusDevice } from './types.js';
 import {
   Base, Device, DevicePower, Switch, Dimmer, Thermostat, Temperature,
   RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Camera, Button,
-  MotorizedDoor, Smoke, CarbonMonoxide,
+  MotorizedDoor, Smoke, CarbonMonoxide, Glass, Tilt, PowerUse,
 } from './capabilities.js';
 
 export function createMockDevices(): ArcusDevice[] {
@@ -23,9 +23,11 @@ export function createMockDevices(): ArcusDevice[] {
       address: 'DRIV:dev:switch-002',
       name: 'Garage Outlet',
       type: 'GE Plug-In Smart Switch',
-      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Switch.NAMESPACE]),
+      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Switch.NAMESPACE, PowerUse.NAMESPACE]),
       attributes: {
         [Switch.ATTR_STATE]: Switch.STATE_OFF,
+        [PowerUse.ATTR_INSTANTANEOUS]: 0,
+        [PowerUse.ATTR_CUMULATIVE]: 12450,
         [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_LINE,
         [Device.ATTR_DEVTYPEHINT]: 'Switch',
       },
@@ -191,6 +193,34 @@ export function createMockDevices(): ArcusDevice[] {
         [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
         [DevicePower.ATTR_BATTERY]: 90,
         [Device.ATTR_DEVTYPEHINT]: 'Smoke/CO',
+      },
+    },
+
+    // --- Glass Break Sensor ---
+    {
+      address: 'DRIV:dev:glass-001',
+      name: 'Living Room Glass Break',
+      type: 'Iris Glass Break Sensor',
+      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Glass.NAMESPACE]),
+      attributes: {
+        [Glass.ATTR_BREAK]: Glass.BREAK_SAFE,
+        [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
+        [DevicePower.ATTR_BATTERY]: 85,
+        [Device.ATTR_DEVTYPEHINT]: 'Glass Break',
+      },
+    },
+
+    // --- Tilt Sensor ---
+    {
+      address: 'DRIV:dev:tilt-001',
+      name: 'Shed Door Tilt',
+      type: 'Iris Garage Door Tilt Sensor',
+      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Tilt.NAMESPACE]),
+      attributes: {
+        [Tilt.ATTR_TILTSTATE]: Tilt.TILTSTATE_UPRIGHT,
+        [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
+        [DevicePower.ATTR_BATTERY]: 70,
+        [Device.ATTR_DEVTYPEHINT]: 'Tilt',
       },
     },
 

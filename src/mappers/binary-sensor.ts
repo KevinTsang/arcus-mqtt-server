@@ -1,5 +1,5 @@
 import type { ArcusDevice } from '../arcus/types.js';
-import { Contact, Motion, LeakH2O, Smoke, CarbonMonoxide } from '../arcus/capabilities.js';
+import { Contact, Motion, LeakH2O, Smoke, CarbonMonoxide, Glass, Tilt } from '../arcus/capabilities.js';
 import type { Config } from '../config.js';
 import type { HADiscoveryConfig } from '../ha/discovery.js';
 import { buildDeviceInfo, buildAvailability } from '../ha/discovery.js';
@@ -50,6 +50,21 @@ const BINARY_SENSOR_DEFS: BinarySensorDef[] = [
     deviceClass: 'carbon_monoxide',
     suffix: 'co',
   },
+  {
+    cap: Glass.NAMESPACE,
+    attribute: Glass.ATTR_BREAK,
+    onValue: Glass.BREAK_DETECTED,
+    deviceClass: 'safety',
+    suffix: 'glass',
+  },
+  {
+    // Tilt sensors mount on garage door panels: upright when closed, flat when open
+    cap: Tilt.NAMESPACE,
+    attribute: Tilt.ATTR_TILTSTATE,
+    onValue: Tilt.TILTSTATE_FLAT,
+    deviceClass: 'garage_door',
+    suffix: 'tilt',
+  },
 ];
 
 function resolveContactDeviceClass(device: ArcusDevice): string {
@@ -58,7 +73,7 @@ function resolveContactDeviceClass(device: ArcusDevice): string {
   return 'door';
 }
 
-/** Maps Arcus cont/mot/leakh2o/smoke/co → HA binary_sensor */
+/** Maps Arcus cont/mot/leakh2o/smoke/co/glass/tilt → HA binary_sensor */
 export const binarySensorMapper: Mapper = {
   matches(device: ArcusDevice): boolean {
     return BINARY_SENSOR_DEFS.some(def => device.caps.has(def.cap));
