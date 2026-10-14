@@ -15,6 +15,8 @@ export interface ArcusDevice {
   caps: Set<ArcusCapability>;
   /** Current attribute values across all capabilities */
   attributes: ArcusAttributes;
+  /** Address of the hub this device pairs through (Zigbee/Z-Wave), if any */
+  hubAddress?: string;
 }
 
 export interface ArcusDeviceEvent {

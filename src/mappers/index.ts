@@ -39,6 +39,7 @@ import { coverMapper } from './cover.js';
 import { cameraMapper } from './camera.js';
 import { sensorMapper } from './sensor.js';
 import { deviceTriggerMapper } from './device-trigger.js';
+import { hubMapper } from './hub.js';
 
 /** All registered mappers, in priority order */
 export const mappers: Mapper[] = [
@@ -51,6 +52,7 @@ export const mappers: Mapper[] = [
   cameraMapper,
   sensorMapper,
   deviceTriggerMapper,
+  hubMapper,
 ];
 
 /** Get all mappers that match a device */

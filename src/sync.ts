@@ -3,12 +3,15 @@ import type { ArcusClient } from './arcus/client.js';
 import type { ArcusDevice, SceneInfo } from './arcus/types.js';
 import type { Config } from './config.js';
 import { matchingMappers } from './mappers/index.js';
-import { DeviceConnection } from './arcus/capabilities.js';
+import { DeviceConnection, DeviceAdvanced, Hub } from './arcus/capabilities.js';
 import { publishState, publishAvailability, publishBridgeAvailability, isDeviceOnline } from './ha/state.js';
 import { publishDiscoveryConfig } from './ha/discovery.js';
 import { setupCommandHandler } from './ha/command.js';
 import { publishAlarmDiscovery, publishAlarmState, publishAlarmAvailability, setupAlarmCommandHandler } from './ha/alarm.js';
 import { publishSceneDiscovery, publishSceneFired, setupSceneCommandHandler } from './ha/scenes.js';
+
+/** Protocols whose devices pair through the hub (others, e.g. IPCD Wi-Fi devices, talk to the platform directly) */
+const HUB_PROTOCOLS = new Set(['ZIGB', 'ZWAV']);
 
 /** Publish HA MQTT Discovery config for a device (only configs that changed) */
 function publishDiscovery(broker: Broker, config: Config, device: ArcusDevice): void {
@@ -29,6 +32,24 @@ async function fullSync(
 ): Promise<void> {
   const deviceList = await client.listDevices();
   console.log(`[Sync] Fetched ${deviceList.length} devices`);
+
+  // The hub isn't in the device list; fetch it separately and track it alongside the
+  // devices so its real-time value changes flow through the same event path.
+  let hub: ArcusDevice | null | undefined;
+  try {
+    hub = await client.getHub();
+  } catch (err) {
+    console.error('[Sync] Hub fetch error:', err);
+    // Keep the last known hub so its entities and via_device links don't flap
+    hub = [...devices.values()].find(d => d.caps.has(Hub.NAMESPACE));
+  }
+  if (hub) {
+    for (const device of deviceList) {
+      const protocol = device.attributes[DeviceAdvanced.ATTR_PROTOCOL];
+      if (HUB_PROTOCOLS.has(String(protocol))) device.hubAddress = hub.address;
+    }
+    deviceList.push(hub);
+  }
 
   // Update the devices map in-place (don't clear — avoids dropping real-time events mid-sync)
   const freshAddresses = new Set<string>();

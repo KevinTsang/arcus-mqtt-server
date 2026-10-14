@@ -3,6 +3,7 @@ import {
   Base, Device, DevicePower, Switch, Dimmer, Thermostat, Temperature,
   RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Camera, Button,
   MotorizedDoor, Smoke, CarbonMonoxide, Glass, Tilt, PowerUse,
+  Hub, HubConnection, HubPower, DeviceAdvanced,
 } from './capabilities.js';
 
 export function createMockDevices(): ArcusDevice[] {
@@ -73,6 +74,9 @@ export function createMockDevices(): ArcusDevice[] {
       type: 'Iris Contact Sensor',
       caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Contact.NAMESPACE, Temperature.NAMESPACE]),
       attributes: {
+        [Device.ATTR_VENDOR]: 'Iris',
+        [Device.ATTR_MODEL]: '3320-L',
+        [DeviceAdvanced.ATTR_PROTOCOL]: 'ZIGB',
         [Contact.ATTR_CONTACT]: Contact.CONTACT_CLOSED,
         [Contact.ATTR_USEHINT]: Contact.USEHINT_DOOR,
         [Temperature.ATTR_TEMPERATURE]: 22.1,
@@ -249,4 +253,21 @@ export function createMockDevices(): ArcusDevice[] {
       },
     },
   ];
+}
+
+export function createMockHub(): ArcusDevice {
+  return {
+    address: 'SERV:hub:LWW-1234',
+    name: 'Arcus Hub',
+    type: 'IH200',
+    caps: new Set([Base.NAMESPACE, Hub.NAMESPACE, HubConnection.NAMESPACE, HubPower.NAMESPACE]),
+    attributes: {
+      [Hub.ATTR_VENDOR]: 'Iris',
+      [Hub.ATTR_MODEL]: 'IH200',
+      [Hub.ATTR_STATE]: Hub.STATE_NORMAL,
+      [HubConnection.ATTR_STATE]: HubConnection.STATE_ONLINE,
+      [HubPower.ATTR_SOURCE]: HubPower.SOURCE_MAINS,
+      [HubPower.ATTR_BATTERY]: 100,
+    },
+  };
 }

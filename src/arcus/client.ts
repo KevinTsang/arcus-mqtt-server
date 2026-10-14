@@ -1,9 +1,12 @@
 import type { ArcusDevice, ArcusAttributes, AlarmState, SceneInfo } from './types.js';
-import { createMockDevices } from './mock-data.js';
+import { createMockDevices, createMockHub } from './mock-data.js';
 
 export interface ArcusClient {
   /** Fetch all devices and their current state */
   listDevices(): Promise<ArcusDevice[]>;
+
+  /** Fetch the place's hub, or null if the place has none */
+  getHub(): Promise<ArcusDevice | null>;
 
   /** Send a command (set attributes) to a device */
   sendCommand(address: string, attributes: ArcusAttributes): Promise<void>;
@@ -41,6 +44,7 @@ export interface ArcusClient {
 
 export class MockArcusClient implements ArcusClient {
   private devices: ArcusDevice[];
+  private hub = createMockHub();
   private eventHandlers: Array<(address: string, attributes: ArcusAttributes) => void> = [];
   private alarmHandlers: Array<(state: AlarmState) => void> = [];
   private mockAlarm: AlarmState = {
@@ -58,6 +62,10 @@ export class MockArcusClient implements ArcusClient {
 
   async listDevices(): Promise<ArcusDevice[]> {
     return this.devices;
+  }
+
+  async getHub(): Promise<ArcusDevice | null> {
+    return this.hub;
   }
 
   async sendCommand(address: string, attributes: ArcusAttributes): Promise<void> {

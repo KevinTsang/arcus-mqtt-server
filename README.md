@@ -31,6 +31,7 @@ Arcus Platform ──► Arcus MQTT Server ──► Embedded MQTT Broker ──
 | Glass break sensor | `binary_sensor` | Glass break detected/safe |
 | Tilt sensor | `binary_sensor` | Garage door open (flat)/closed (upright) |
 | Power meter | `sensor` | Power (W) and cumulative energy (Wh) |
+| Hub | `binary_sensor`, `sensor` | Hub connectivity, mains power (off = running on battery), battery level |
 | Door lock | `lock` | Lock/unlock |
 | Camera | `camera` | Discovery only |
 | Temperature | `sensor` | Temperature reading |
@@ -131,7 +132,7 @@ src/
 │   ├── client.ts         # MockArcusClient
 │   ├── platform-client.ts # PlatformArcusClient (real API)
 │   ├── bridge-client.ts  # WebSocket bridge (api-server + client-bridge modes)
-│   └── mock-data.ts      # 13 mock devices
+│   └── mock-data.ts      # Mock devices and hub
 ├── ha/
 │   ├── topics.ts         # MQTT topic utilities
 │   ├── discovery.ts      # HA Discovery config publishing
@@ -148,7 +149,8 @@ src/
     ├── lock.ts           # doorlock → lock
     ├── camera.ts         # camera → camera
     ├── sensor.ts         # temp/humid/battery/pow → sensor
-    └── device-trigger.ts # but → device_automation
+    ├── device-trigger.ts # but → device_automation
+    └── hub.ts            # hub connectivity/power/battery → binary_sensor, sensor
 ```
 
 ### Mapper Pattern

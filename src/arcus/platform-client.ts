@@ -11,6 +11,7 @@ const CAP_PREFIXES = new Set([
   'but', 'camera', 'indicator', 'color', 'colortemp',
   'fan', 'vent', 'spaceheater', 'irr', 'valve',
   'pow', 'alert', 'shade',
+  'dev', 'hub', 'hubconn', 'hubpow',
 ]);
 
 function isRelevantAttribute(key: string): boolean {
@@ -173,6 +174,17 @@ export class PlatformArcusClient implements ArcusClient {
     const devices = rawDevices.map(transformDevice);
     console.log(`[PlatformClient] Listed ${devices.length} devices`);
     return devices;
+  }
+
+  async getHub(): Promise<ArcusDevice | null> {
+    const resp = await this.bridge.sendRequest(this.bridge.placeDestination, 'place:GetHub', {});
+    const rawHub = resp.payload.attributes.hub as Record<string, unknown> | undefined;
+    if (!rawHub) return null;
+
+    const hub = transformDevice(rawHub);
+    hub.name = (rawHub['hub:name'] as string) || 'Arcus Hub';
+    hub.type = (rawHub['hub:model'] as string) ?? 'Hub';
+    return hub;
   }
 
   async sendCommand(address: string, attributes: ArcusAttributes): Promise<void> {

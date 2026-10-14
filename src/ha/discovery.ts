@@ -1,5 +1,6 @@
 import type { Broker } from '../broker.js';
 import type { ArcusDevice } from '../arcus/types.js';
+import { Device, Hub } from '../arcus/capabilities.js';
 import type { Config } from '../config.js';
 import { deviceId, availabilityTopic, bridgeAvailabilityTopic } from './topics.js';
 
@@ -15,15 +16,28 @@ export interface HADeviceInfo {
   name: string;
   model: string;
   manufacturer: string;
+  via_device?: string;
+}
+
+function deviceIdentifier(config: Config, address: string): string {
+  return `${config.deviceIdPrefix}_${deviceId(address)}`;
 }
 
 export function buildDeviceInfo(config: Config, device: ArcusDevice): HADeviceInfo {
-  return {
-    identifiers: [`${config.deviceIdPrefix}_${deviceId(device.address)}`],
+  const attrs = device.attributes;
+  const vendor = attrs[Device.ATTR_VENDOR] ?? attrs[Hub.ATTR_VENDOR];
+  const model = attrs[Device.ATTR_MODEL] ?? attrs[Hub.ATTR_MODEL];
+
+  const info: HADeviceInfo = {
+    identifiers: [deviceIdentifier(config, device.address)],
     name: device.name,
-    model: device.type,
-    manufacturer: 'Arcus',
+    model: model ? String(model) : device.type,
+    manufacturer: vendor ? String(vendor) : 'Arcus',
   };
+  if (device.hubAddress) {
+    info.via_device = deviceIdentifier(config, device.hubAddress);
+  }
+  return info;
 }
 
 /**
