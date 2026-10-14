@@ -2,6 +2,7 @@ import type { Config } from '../config.js';
 import type { ArcusClient } from './client.js';
 import type { ArcusDevice, ArcusAttributes, AlarmState, SceneInfo } from './types.js';
 import { BridgeClient, throwIfErrorResponse } from './bridge-client.js';
+import { SecuritySubsystem } from './capabilities.js';
 
 function transformDevice(raw: Record<string, unknown>): ArcusDevice {
   const address = raw['base:address'] as string;
@@ -203,6 +204,7 @@ export class PlatformArcusClient implements ArcusClient {
     return {
       securityMode: (attrs['subsecurity:alarmState'] as string) ?? 'DISARMED',
       alarmMode: (attrs['subsecurity:alarmMode'] as string) ?? 'ON',
+      bypassedDevices: (attrs[SecuritySubsystem.ATTR_BYPASSEDDEVICES] as string[] | undefined) ?? [],
     };
   }
 
@@ -210,14 +212,23 @@ export class PlatformArcusClient implements ArcusClient {
     console.log(`[PlatformClient] Arming alarm: ${mode}`);
     const resp = await this.bridge.sendRequest(this.subalarmDestination, 'subalarm:Arm', { mode });
     if (resp.payload.messageType === 'Error' && resp.payload.attributes.code === 'security.triggeredDevices') {
+      // Open sensors block a plain Arm; arm without them. HA is told via the bypassed-sensors entity.
       console.log('[PlatformClient] Devices need bypassing, sending ArmBypassed');
-      await this.bridge.sendRequest(this.subalarmDestination, 'subalarm:ArmBypassed', { mode });
+      throwIfErrorResponse(
+        await this.bridge.sendRequest(this.subalarmDestination, 'subalarm:ArmBypassed', { mode }),
+        'subalarm:ArmBypassed',
+      );
+      return;
     }
+    throwIfErrorResponse(resp, 'subalarm:Arm');
   }
 
   async disarmAlarm(): Promise<void> {
     console.log('[PlatformClient] Disarming alarm');
-    await this.bridge.sendRequest(this.subalarmDestination, 'subalarm:Disarm', {});
+    throwIfErrorResponse(
+      await this.bridge.sendRequest(this.subalarmDestination, 'subalarm:Disarm', {}),
+      'subalarm:Disarm',
+    );
   }
 
   onAlarmEvent(handler: (state: AlarmState) => void): void {

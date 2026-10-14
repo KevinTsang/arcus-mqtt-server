@@ -27,6 +27,7 @@ export interface ArcusDeviceEvent {
 export interface AlarmState {
   securityMode: string;   // DISARMED, ARMING, ARMED, SOAKING, ALERT, CLEARING
   alarmMode: string;      // ON = full/away, PARTIAL = home
+  bypassedDevices: string[]; // addresses of sensors excluded from the current arming
 }
 
 export interface SceneInfo {

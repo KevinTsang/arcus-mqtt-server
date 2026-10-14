@@ -50,6 +50,7 @@ export class MockArcusClient implements ArcusClient {
   private mockAlarm: AlarmState = {
     securityMode: 'DISARMED',
     alarmMode: 'ON',
+    bypassedDevices: [],
   };
 
   constructor() {
@@ -93,23 +94,28 @@ export class MockArcusClient implements ArcusClient {
   }
 
   async getAlarmState(): Promise<AlarmState> {
-    return { ...this.mockAlarm };
+    return { ...this.mockAlarm, bypassedDevices: [...this.mockAlarm.bypassedDevices] };
   }
 
   async armAlarm(mode: 'ON' | 'PARTIAL'): Promise<void> {
     this.mockAlarm.securityMode = 'ARMED';
     this.mockAlarm.alarmMode = mode;
+    // Like the platform, arm around any open contact sensors
+    this.mockAlarm.bypassedDevices = this.devices
+      .filter(d => d.attributes['cont:contact'] === 'OPENED')
+      .map(d => d.address);
     console.log(`[MockArcusClient] Alarm armed (${mode})`);
     for (const handler of this.alarmHandlers) {
-      handler({ ...this.mockAlarm });
+      handler({ ...this.mockAlarm, bypassedDevices: [...this.mockAlarm.bypassedDevices] });
     }
   }
 
   async disarmAlarm(): Promise<void> {
     this.mockAlarm.securityMode = 'DISARMED';
+    this.mockAlarm.bypassedDevices = [];
     console.log('[MockArcusClient] Alarm disarmed');
     for (const handler of this.alarmHandlers) {
-      handler({ ...this.mockAlarm });
+      handler({ ...this.mockAlarm, bypassedDevices: [...this.mockAlarm.bypassedDevices] });
     }
   }
 

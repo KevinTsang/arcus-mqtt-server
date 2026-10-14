@@ -81,7 +81,7 @@ async function fullSync(
   publishAlarmDiscovery(broker, config);
   try {
     const alarmState = await client.getAlarmState();
-    publishAlarmState(broker, alarmState);
+    publishAlarmState(broker, alarmState, (address) => devices.get(address)?.name ?? address);
     publishAlarmAvailability(broker, true);
   } catch (err) {
     console.error('[Sync] Alarm state fetch error:', err);
@@ -162,9 +162,10 @@ export async function startSync(
   setupCommandHandler(broker, config, client, devices);
 
   // Set up alarm command handling and event listening
-  setupAlarmCommandHandler(broker, client);
+  const deviceName = (address: string) => devices.get(address)?.name ?? address;
+  setupAlarmCommandHandler(broker, client, deviceName);
   client.onAlarmEvent((alarmState) => {
-    publishAlarmState(broker, alarmState);
+    publishAlarmState(broker, alarmState, deviceName);
     console.log(`[Sync] Real-time alarm update: ${alarmState.securityMode}`);
   });
 
