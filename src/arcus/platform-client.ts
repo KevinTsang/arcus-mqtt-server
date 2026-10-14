@@ -1,7 +1,7 @@
 import type { Config } from '../config.js';
 import type { ArcusClient } from './client.js';
 import type { ArcusDevice, ArcusAttributes, AlarmState, SceneInfo } from './types.js';
-import { BridgeClient } from './bridge-client.js';
+import { BridgeClient, throwIfErrorResponse } from './bridge-client.js';
 
 function transformDevice(raw: Record<string, unknown>): ArcusDevice {
   const address = raw['base:address'] as string;
@@ -145,7 +145,16 @@ export class PlatformArcusClient implements ArcusClient {
       const placeId = this.config.arcusPlaceId;
       this.bridge.setActivePlace(placeId);
       console.log(`[PlatformClient] Setting active place: ${placeId}`);
-      await this.bridge.sendRequest('SERV:sess:', 'sess:SetActivePlace', { placeId });
+      try {
+        throwIfErrorResponse(
+          await this.bridge.sendRequest('SERV:sess:', 'sess:SetActivePlace', { placeId }),
+          'sess:SetActivePlace',
+        );
+      } catch (err) {
+        // Don't leave a session open (and auto-reconnecting) with no active place
+        this.bridge.disconnect();
+        throw err;
+      }
       console.log('[PlatformClient] Connected and active place set');
     }
   }

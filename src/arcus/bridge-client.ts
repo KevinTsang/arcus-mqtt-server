@@ -47,6 +47,14 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_EVENT_BUFFER = 100;
 const RECONNECT_DELAYS = [1_000, 2_000, 5_000, 10_000, 30_000];
 
+/** Throw if a response is an Error reply, which sendRequest resolves rather than rejects */
+export function throwIfErrorResponse(resp: BridgeMessage, request: string): BridgeMessage {
+  if (resp.payload?.messageType === 'Error') {
+    throw new Error(`${request} failed: ${JSON.stringify(resp.payload.attributes)}`);
+  }
+  return resp;
+}
+
 const debug = !!process.env.ARCUS_DEBUG;
 function log(msg: string): void {
   console.log(`[BridgeClient] ${msg}`);
@@ -238,10 +246,7 @@ export class BridgeClient {
             log(`Reconnected — re-setting active place ${placeId}`);
             this.sendRequest('SERV:sess:', 'sess:SetActivePlace', { placeId })
               .then((resp) => {
-                // An error reply resolves rather than rejects, so check for it explicitly
-                if (resp.payload?.messageType === 'Error') {
-                  throw new Error(JSON.stringify(resp.payload.attributes));
-                }
+                throwIfErrorResponse(resp, 'sess:SetActivePlace');
                 log('Active place restored after reconnect');
                 this._setConnected(true);
               })
