@@ -216,4 +216,7 @@ State, availability and discovery messages are retained so Home Assistant picks 
 npm run dev       # Watch mode — recompiles on changes
 npm run build     # One-time compile
 npm start         # Run compiled output
+npm test          # Compile and run the test suite
 ```
+
+Tests use Node's built-in test runner and live in `test/`. They compile to `build-test/` with `tsconfig.test.json`, so they never end up in `dist/` or the Docker image. `test/helpers.ts` provides a fake MQTT broker and a fake Arcus WebSocket server.

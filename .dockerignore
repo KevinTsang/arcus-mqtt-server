@@ -1,3 +1,5 @@
 node_modules
 dist
 .git
+build-test
+test
