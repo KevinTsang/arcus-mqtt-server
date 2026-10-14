@@ -3,22 +3,6 @@ import type { ArcusClient } from './client.js';
 import type { ArcusDevice, ArcusAttributes, AlarmState, SceneInfo } from './types.js';
 import { BridgeClient } from './bridge-client.js';
 
-/** Known Arcus capability prefixes we care about for attribute mapping */
-const CAP_PREFIXES = new Set([
-  'swit', 'dim', 'doorlock', 'therm', 'temp', 'humid', 'cont',
-  'mot', 'pres', 'tilt', 'glass', 'smoke', 'co', 'water', 'leak',
-  'devpow', 'devconn', 'devota', 'devadv', 'wifi',
-  'but', 'camera', 'indicator', 'color', 'colortemp',
-  'fan', 'vent', 'spaceheater', 'irr', 'valve',
-  'pow', 'alert', 'shade',
-  'dev', 'hub', 'hubconn', 'hubpow',
-]);
-
-function isRelevantAttribute(key: string): boolean {
-  const prefix = key.split(':')[0];
-  return CAP_PREFIXES.has(prefix);
-}
-
 function transformDevice(raw: Record<string, unknown>): ArcusDevice {
   const address = raw['base:address'] as string;
   const name = (raw['dev:name'] as string) ?? address;
@@ -26,9 +10,13 @@ function transformDevice(raw: Record<string, unknown>): ArcusDevice {
   const rawCaps = (raw['base:caps'] as string[]) ?? [];
   const caps = new Set<string>(rawCaps);
 
+  // Keep primitive attributes from the device's own capabilities. Filtering by
+  // base:caps (rather than a fixed namespace list) means a newly mapped capability
+  // can't silently lose its state on every sync.
   const attributes: ArcusAttributes = {};
   for (const [key, value] of Object.entries(raw)) {
-    if (isRelevantAttribute(key) && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
+    const namespace = key.split(':')[0];
+    if (caps.has(namespace) && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
       attributes[key] = value;
     }
   }
