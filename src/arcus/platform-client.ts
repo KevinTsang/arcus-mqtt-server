@@ -188,7 +188,7 @@ export class PlatformArcusClient implements ArcusClient {
 
   async sendCommand(address: string, attributes: ArcusAttributes): Promise<void> {
     console.log(`[PlatformClient] Command → ${address}:`, attributes);
-    await this.bridge.sendRequest(address, 'base:SetAttributes', attributes);
+    throwIfErrorResponse(await this.bridge.sendRequest(address, 'base:SetAttributes', attributes), 'base:SetAttributes');
   }
 
   onDeviceEvent(handler: (address: string, attributes: ArcusAttributes) => void): void {
@@ -263,6 +263,6 @@ export class PlatformArcusClient implements ArcusClient {
 
   async fireScene(address: string): Promise<void> {
     console.log(`[PlatformClient] Firing scene: ${address}`);
-    await this.bridge.sendRequest(address, 'scene:Fire', {});
+    throwIfErrorResponse(await this.bridge.sendRequest(address, 'scene:Fire', {}), 'scene:Fire');
   }
 }

@@ -112,6 +112,33 @@ describe('PlatformArcusClient', () => {
     });
   });
 
+  describe('commands and scenes', () => {
+    const refused = { messageType: 'Error', attributes: { code: 'request.refused' } };
+
+    it('sends device commands and scene fires to the target address', async () => {
+      const { server, client } = await connect(() => undefined);
+      await client.connect();
+      await client.sendCommand('DRIV:dev:l1', { 'doorlock:lockstate': 'UNLOCKED' });
+      await client.fireScene('SERV:scene:p.1');
+      const [cmd] = server.requestsOf('base:SetAttributes');
+      assert.equal(cmd.destination, 'DRIV:dev:l1');
+      assert.deepEqual(cmd.attributes, { 'doorlock:lockstate': 'UNLOCKED' });
+      assert.equal(server.requestsOf('scene:Fire')[0].destination, 'SERV:scene:p.1');
+    });
+
+    it('rejects a refused device command', async () => {
+      const { client } = await connect((req) => (req.messageType === 'base:SetAttributes' ? refused : undefined));
+      await client.connect();
+      await assert.rejects(client.sendCommand('DRIV:dev:l1', { 'doorlock:lockstate': 'UNLOCKED' }), /base:SetAttributes failed/);
+    });
+
+    it('rejects a refused scene fire', async () => {
+      const { client } = await connect((req) => (req.messageType === 'scene:Fire' ? refused : undefined));
+      await client.connect();
+      await assert.rejects(client.fireScene('SERV:scene:p.1'), /scene:Fire failed/);
+    });
+  });
+
   describe('alarm', () => {
     it('arms directly when nothing is open', async () => {
       const { server, client } = await connect(() => undefined);
