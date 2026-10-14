@@ -34,6 +34,7 @@ Arcus Platform ──► Arcus MQTT Server ──► Embedded MQTT Broker ──
 | Power meter | `sensor` | Power (W) and cumulative energy (Wh) |
 | Hub | `binary_sensor`, `sensor` | Hub connectivity, mains power (off = running on battery), battery level |
 | Door lock | `lock` | Lock/unlock, locking/unlocking |
+| Water valve | `valve` (water) | Open/close, opening/closing |
 | Temperature | `sensor` | Temperature reading |
 | Humidity | `sensor` | Humidity reading |
 | Battery | `sensor` | Battery percentage |
@@ -159,7 +160,8 @@ src/
     ├── lock.ts           # doorlock → lock
     ├── sensor.ts         # temp/humid/battery/pow → sensor
     ├── device-trigger.ts # but → device_automation
-    └── hub.ts            # hub connectivity/power/battery → binary_sensor, sensor
+    ├── hub.ts            # hub connectivity/power/battery → binary_sensor, sensor
+    └── valve.ts          # valv → valve
 ```
 
 ### Mapper Pattern

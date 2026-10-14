@@ -5,6 +5,7 @@ import { sensorMapper } from '../src/mappers/sensor.js';
 import { lockMapper } from '../src/mappers/lock.js';
 import { hubMapper } from '../src/mappers/hub.js';
 import { climateMapper } from '../src/mappers/climate.js';
+import { valveMapper } from '../src/mappers/valve.js';
 import { matchingMappers } from '../src/mappers/index.js';
 import type { Mapper } from '../src/mappers/index.js';
 import type { ArcusAttributes } from '../src/arcus/types.js';
@@ -188,6 +189,29 @@ describe('climate mapper', () => {
       assert.deepEqual(cmd('auto'), { 'therm:fanmode': 0 });
       assert.equal(cmd('turbo'), null);
     });
+  });
+});
+
+describe('valve mapper', () => {
+  const valve = (state?: string) => makeDevice('DRIV:dev:v1', ['valv'], state ? { 'valv:valvestate': state } : {});
+
+  it('maps a water valve with Arcus states', () => {
+    const [disc] = valveMapper.buildDiscovery(config, valve('OPEN'));
+    assert.equal(disc.topic, 'homeassistant/valve/arcus/v1_valve/config');
+    assert.equal(disc.payload.device_class, 'water');
+    assert.equal(disc.payload.state_closing, 'CLOSING');
+    assert.deepEqual(valveMapper.buildState(config, valve('CLOSING')), { valve: 'CLOSING' });
+  });
+
+  it('reports obstruction or a missing state as unknown', () => {
+    assert.deepEqual(valveMapper.buildState(config, valve('OBSTRUCTION')), { valve: 'None' });
+    assert.deepEqual(valveMapper.buildState(config, valve()), { valve: 'None' });
+  });
+
+  it('opens and closes', () => {
+    assert.deepEqual(valveMapper.handleCommand(config, valve(), 'valve', 'CLOSE'), { 'valv:valvestate': 'CLOSED' });
+    assert.deepEqual(valveMapper.handleCommand(config, valve(), 'valve', 'OPEN'), { 'valv:valvestate': 'OPEN' });
+    assert.equal(valveMapper.handleCommand(config, valve(), 'valve', 'STOP'), null);
   });
 });
 

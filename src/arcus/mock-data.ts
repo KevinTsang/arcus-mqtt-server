@@ -4,6 +4,7 @@ import {
   RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Button,
   MotorizedDoor, Smoke, CarbonMonoxide, Glass, Tilt, PowerUse,
   Hub, HubConnection, HubPower, DeviceAdvanced,
+  Valve,
 } from './capabilities.js';
 
 export function createMockDevices(): ArcusDevice[] {
@@ -200,6 +201,19 @@ export function createMockDevices(): ArcusDevice[] {
         [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
         [DevicePower.ATTR_BATTERY]: 90,
         [Device.ATTR_DEVTYPEHINT]: 'Smoke/CO',
+      },
+    },
+
+    // --- Water Shutoff Valve ---
+    {
+      address: 'DRIV:dev:valve-001',
+      name: 'Main Water Shutoff',
+      type: 'Dome Water Main Shut-Off',
+      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Valve.NAMESPACE]),
+      attributes: {
+        [Valve.ATTR_VALVESTATE]: Valve.VALVESTATE_OPEN,
+        [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_LINE,
+        [Device.ATTR_DEVTYPEHINT]: 'Water Valve',
       },
     },
 
