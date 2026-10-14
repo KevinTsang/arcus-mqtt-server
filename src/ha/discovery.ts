@@ -1,3 +1,4 @@
+import type { Broker } from '../broker.js';
 import type { ArcusDevice } from '../arcus/types.js';
 import type { Config } from '../config.js';
 import { deviceId, availabilityTopic, bridgeAvailabilityTopic } from './topics.js';
@@ -45,4 +46,26 @@ export function buildAvailability(config: Config, device: ArcusDevice) {
     ],
     availability_mode: 'all',
   };
+}
+
+/** Last payload published per discovery topic, so unchanged configs aren't re-sent every poll */
+const publishedDiscovery = new Map<string, string>();
+
+/** Publish a retained discovery config, skipping it if the same payload was already published */
+export function publishDiscoveryConfig(broker: Broker, topic: string, payload: Record<string, unknown>): void {
+  const json = JSON.stringify(payload);
+  if (publishedDiscovery.get(topic) === json) return;
+  publishedDiscovery.set(topic, json);
+
+  broker.publish(
+    {
+      cmd: 'publish',
+      topic,
+      payload: Buffer.from(json),
+      qos: 0,
+      dup: false,
+      retain: true,
+    },
+    () => {},
+  );
 }

@@ -5,28 +5,16 @@ import type { Config } from './config.js';
 import { matchingMappers } from './mappers/index.js';
 import { DeviceConnection } from './arcus/capabilities.js';
 import { publishState, publishAvailability, publishBridgeAvailability, isDeviceOnline } from './ha/state.js';
+import { publishDiscoveryConfig } from './ha/discovery.js';
 import { setupCommandHandler } from './ha/command.js';
 import { publishAlarmDiscovery, publishAlarmState, publishAlarmAvailability, setupAlarmCommandHandler } from './ha/alarm.js';
 import { publishSceneDiscovery, publishSceneFired, setupSceneCommandHandler } from './ha/scenes.js';
 
-/** Publish HA MQTT Discovery config for a device */
+/** Publish HA MQTT Discovery config for a device (only configs that changed) */
 function publishDiscovery(broker: Broker, config: Config, device: ArcusDevice): void {
-  const matched = matchingMappers(device);
-
-  for (const mapper of matched) {
-    const configs = mapper.buildDiscovery(config, device);
-    for (const disc of configs) {
-      broker.publish(
-        {
-          cmd: 'publish',
-          topic: disc.topic,
-          payload: Buffer.from(JSON.stringify(disc.payload)),
-          qos: 0,
-          dup: false,
-          retain: true,
-        },
-        () => {},
-      );
+  for (const mapper of matchingMappers(device)) {
+    for (const disc of mapper.buildDiscovery(config, device)) {
+      publishDiscoveryConfig(broker, disc.topic, disc.payload);
     }
   }
 }

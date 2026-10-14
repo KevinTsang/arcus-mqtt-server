@@ -3,6 +3,7 @@ import type { ArcusClient } from '../arcus/client.js';
 import type { SceneInfo } from '../arcus/types.js';
 import type { Config } from '../config.js';
 import { discoveryTopic, bridgeAvailabilityTopic } from './topics.js';
+import { publishDiscoveryConfig } from './discovery.js';
 
 function sceneObjectId(scene: SceneInfo): string {
   // scene.id is like "{placeId}.1" — use just the number suffix
@@ -33,45 +34,25 @@ export function publishSceneDiscovery(broker: Broker, config: Config, scenes: Sc
 
     // Device trigger (fires when scene runs on Arcus side)
     const triggerTopic = discoveryTopic(config, 'device_automation', objectId);
-    broker.publish(
-      {
-        cmd: 'publish',
-        topic: triggerTopic,
-        payload: Buffer.from(JSON.stringify({
-          automation_type: 'trigger',
-          type: 'scene_fired',
-          subtype: scene.name,
-          topic: sceneTriggerTopic(config, scene),
-          payload: 'fired',
-          device,
-        })),
-        qos: 0,
-        dup: false,
-        retain: true,
-      },
-      () => {},
-    );
+    publishDiscoveryConfig(broker, triggerTopic, {
+      automation_type: 'trigger',
+      type: 'scene_fired',
+      subtype: scene.name,
+      topic: sceneTriggerTopic(config, scene),
+      payload: 'fired',
+      device,
+    });
 
     // Button entity (press to fire scene from HA)
     const buttonTopic = discoveryTopic(config, 'button', objectId);
-    broker.publish(
-      {
-        cmd: 'publish',
-        topic: buttonTopic,
-        payload: Buffer.from(JSON.stringify({
-          name: scene.name,
-          unique_id: `${config.deviceIdPrefix}_${objectId}`,
-          command_topic: sceneCommandTopic(config, scene),
-          payload_press: 'PRESS',
-          availability_topic: bridgeAvailabilityTopic(config),
-          device,
-        })),
-        qos: 0,
-        dup: false,
-        retain: true,
-      },
-      () => {},
-    );
+    publishDiscoveryConfig(broker, buttonTopic, {
+      name: scene.name,
+      unique_id: `${config.deviceIdPrefix}_${objectId}`,
+      command_topic: sceneCommandTopic(config, scene),
+      payload_press: 'PRESS',
+      availability_topic: bridgeAvailabilityTopic(config),
+      device,
+    });
   }
 }
 

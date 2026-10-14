@@ -3,6 +3,7 @@ import type { ArcusClient } from '../arcus/client.js';
 import type { AlarmState } from '../arcus/types.js';
 import type { Config } from '../config.js';
 import { discoveryTopic, bridgeAvailabilityTopic } from './topics.js';
+import { publishDiscoveryConfig } from './discovery.js';
 
 const ALARM_STATE_TOPIC = 'arcus/alarm/state';
 const ALARM_COMMAND_TOPIC = 'arcus/alarm/set';
@@ -50,17 +51,7 @@ export function publishAlarmDiscovery(broker: Broker, config: Config): void {
     },
   };
 
-  broker.publish(
-    {
-      cmd: 'publish',
-      topic,
-      payload: Buffer.from(JSON.stringify(payload)),
-      qos: 0,
-      dup: false,
-      retain: true,
-    },
-    () => {},
-  );
+  publishDiscoveryConfig(broker, topic, payload);
 }
 
 export function publishAlarmState(broker: Broker, alarm: AlarmState): void {

@@ -24,7 +24,7 @@ export function loadConfig(): Config {
     mqttTlsCert: process.env.MQTT_TLS_CERT,
     mqttTlsKey: process.env.MQTT_TLS_KEY,
     arcusMock: process.env.ARCUS_MOCK === '1',
-    pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS ?? '30000', 10),
+    pollIntervalMs: parseInt(process.env.POLL_INTERVAL_MS ?? '300000', 10),
     haDiscoveryPrefix: process.env.HA_DISCOVERY_PREFIX ?? 'homeassistant',
     deviceIdPrefix: process.env.DEVICE_ID_PREFIX ?? 'arcus',
     arcusBridgeUrl: process.env.ARCUS_BRIDGE_URL,

@@ -98,7 +98,7 @@ All configuration is via environment variables:
 | `MQTT_TLS_CERT` | — | Path to TLS certificate |
 | `MQTT_TLS_KEY` | — | Path to TLS private key |
 | `ARCUS_MOCK` | `0` | Set to `1` for mock mode |
-| `POLL_INTERVAL_MS` | `30000` | Device polling interval (ms) |
+| `POLL_INTERVAL_MS` | `300000` | Full resync interval (ms). Live events carry most updates; this is a safety net |
 | `HA_DISCOVERY_PREFIX` | `homeassistant` | HA MQTT Discovery topic prefix |
 | `DEVICE_ID_PREFIX` | `arcus` | Prefix for device IDs in topics |
 | `ARCUS_BRIDGE_URL` | — | Arcus platform WebSocket URL |
