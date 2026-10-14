@@ -59,17 +59,31 @@ export function buildAvailability(config: Config, device: ArcusDevice) {
   };
 }
 
-/** Last payload published per discovery topic, so unchanged configs aren't re-sent every poll */
-const publishedDiscovery = new Map<string, string>();
+interface DiscoveryCache {
+  /** Last payload published per discovery topic, so unchanged configs aren't re-sent every poll */
+  published: Map<string, string>;
+  /** Discovery topics last published by each owner (a device address, or e.g. 'scenes') */
+  byOwner: Map<string, Set<string>>;
+}
 
-/** Discovery topics last published by each owner (a device address, or e.g. 'scenes') */
-const discoveryByOwner = new Map<string, Set<string>>();
+/** Per broker, since the cache describes what that broker currently holds as retained */
+const caches = new WeakMap<Broker, DiscoveryCache>();
+
+function cacheFor(broker: Broker): DiscoveryCache {
+  let cache = caches.get(broker);
+  if (!cache) {
+    cache = { published: new Map(), byOwner: new Map() };
+    caches.set(broker, cache);
+  }
+  return cache;
+}
 
 /** Publish a retained discovery config, skipping it if the same payload was already published */
 export function publishDiscoveryConfig(broker: Broker, topic: string, payload: Record<string, unknown>): void {
+  const { published } = cacheFor(broker);
   const json = JSON.stringify(payload);
-  if (publishedDiscovery.get(topic) === json) return;
-  publishedDiscovery.set(topic, json);
+  if (published.get(topic) === json) return;
+  published.set(topic, json);
 
   broker.publish(
     {
@@ -86,7 +100,7 @@ export function publishDiscoveryConfig(broker: Broker, topic: string, payload: R
 
 /** Remove a discovery config: an empty retained payload makes HA delete the entity */
 function removeDiscoveryConfig(broker: Broker, topic: string): void {
-  publishedDiscovery.delete(topic);
+  cacheFor(broker).published.delete(topic);
   broker.publish(
     {
       cmd: 'publish',
@@ -105,16 +119,17 @@ function removeDiscoveryConfig(broker: Broker, topic: string): void {
  * before that are no longer in the set (e.g. a capability or scene went away).
  */
 export function syncOwnedDiscovery(broker: Broker, owner: string, configs: HADiscoveryConfig[]): void {
+  const { byOwner } = cacheFor(broker);
   const topics = new Set(configs.map(c => c.topic));
   for (const disc of configs) {
     publishDiscoveryConfig(broker, disc.topic, disc.payload);
   }
-  for (const topic of discoveryByOwner.get(owner) ?? []) {
+  for (const topic of byOwner.get(owner) ?? []) {
     if (!topics.has(topic)) removeDiscoveryConfig(broker, topic);
   }
 
-  if (topics.size > 0) discoveryByOwner.set(owner, topics);
-  else discoveryByOwner.delete(owner);
+  if (topics.size > 0) byOwner.set(owner, topics);
+  else byOwner.delete(owner);
 }
 
 /** Remove every discovery config an owner published (e.g. the device was deleted) */
