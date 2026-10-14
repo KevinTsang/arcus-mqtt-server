@@ -10,11 +10,12 @@ Arcus Platform ──► Arcus MQTT Server ──► Embedded MQTT Broker ──
 ```
 
 1. Connects to the Arcus platform via WebSocket (or uses mock devices for testing)
-2. Publishes HA MQTT Discovery configs so devices appear automatically
+2. Publishes HA MQTT Discovery configs so devices appear automatically, and removes them when devices, scenes or capabilities go away
 3. Publishes device state as retained JSON messages
 4. Subscribes to command topics and forwards commands back to Arcus
-5. Polls periodically and handles real-time WebSocket events for instant updates
-6. Auto-reconnects with exponential backoff on connection loss
+5. Applies real-time WebSocket events immediately, with a full resync every 5 minutes (by default) as a safety net
+6. Tracks availability: entities go unavailable when the Arcus connection drops, the device goes offline, or the hub it pairs through goes offline
+7. Auto-reconnects with exponential backoff on connection loss, then resyncs
 
 ## Supported Device Types
 
@@ -22,7 +23,7 @@ Arcus Platform ──► Arcus MQTT Server ──► Embedded MQTT Broker ──
 |--------|-------------|--------------|
 | Switch | `switch` | On/off control |
 | Dimmer | `light` | On/off, brightness (JSON schema) |
-| Thermostat | `climate` | Mode, setpoints, current temp/humidity |
+| Thermostat | `climate` | Mode, setpoints, current temp, heating/cooling/idle, fan (off/on or speeds), ECO preset |
 | Contact sensor | `binary_sensor` | Door/window open/closed |
 | Motion sensor | `binary_sensor` | Motion detected/clear |
 | Leak sensor | `binary_sensor` | Water leak detected/safe |
@@ -32,12 +33,13 @@ Arcus Platform ──► Arcus MQTT Server ──► Embedded MQTT Broker ──
 | Tilt sensor | `binary_sensor` | Garage door open (flat)/closed (upright) |
 | Power meter | `sensor` | Power (W) and cumulative energy (Wh) |
 | Hub | `binary_sensor`, `sensor` | Hub connectivity, mains power (off = running on battery), battery level |
-| Door lock | `lock` | Lock/unlock |
+| Door lock | `lock` | Lock/unlock, locking/unlocking |
 | Temperature | `sensor` | Temperature reading |
 | Humidity | `sensor` | Humidity reading |
 | Battery | `sensor` | Battery percentage |
 | Button/fob | `device_automation` | Button press triggers |
 | Alarm | `alarm_control_panel` | Arm home/away, disarm |
+| Alarm bypass | `binary_sensor` | On while armed with sensors bypassed; lists them by name |
 | Scenes | `button` + `device_automation` | Fire scenes, scene triggers |
 
 ## Quick Start
@@ -93,8 +95,8 @@ All configuration is via environment variables:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MQTT_PORT` | `1883` | MQTT broker listen port |
-| `MQTT_USERNAME` | — | Optional broker authentication |
-| `MQTT_PASSWORD` | — | Optional broker authentication |
+| `MQTT_USERNAME` | — | Broker username. **Set this:** without it the broker accepts anyone (see below) |
+| `MQTT_PASSWORD` | — | Broker password |
 | `MQTT_TLS_CERT` | — | Path to TLS certificate |
 | `MQTT_TLS_KEY` | — | Path to TLS private key |
 | `ARCUS_MOCK` | `0` | Set to `1` for mock mode |
@@ -108,12 +110,21 @@ All configuration is via environment variables:
 | `ARCUS_AUTH_TOKEN` | — | Auth token, alternative to username/password |
 | `ARCUS_PLACE_ID` | — | Place ID (required for client-bridge, optional for api-server) |
 
+> **Security:** broker authentication is only enabled when both `MQTT_USERNAME` and `MQTT_PASSWORD` are set. Without them, anyone who can reach port 1883 can read every sensor and send commands, including disarming the alarm and unlocking doors. The alarm panel doesn't require a code to disarm. Set credentials, and don't expose the port beyond the network Home Assistant runs on.
+
 ## Home Assistant Setup
 
 1. Start the Arcus MQTT server
 2. In Home Assistant, go to **Settings → Devices & Services → Add Integration → MQTT**
-3. Set the broker to the host running this server, port `1883`
+3. Set the broker to the host running this server, port `1883`, with the `MQTT_USERNAME` and `MQTT_PASSWORD` you configured
 4. Devices appear automatically via MQTT Discovery
+
+### Notes
+
+- **Alarm bypass notifications.** Arming with a door or window open arms around it (Arcus "arm bypassed"). The **Bypassed sensors** binary sensor on the *Arcus Security* device turns on when that happens, and its `bypassed_sensors` attribute lists the sensors. Trigger a notification automation on it turning on.
+- **Thermostat fan.** Arcus fans have two states: run only while heating or cooling, or run all the time. They appear as **off** and **on** (or off/low/medium/high for multi-speed fans), because HomeKit's fan toggle needs an "off" mode. "Off" still runs the fan during heating and cooling.
+- **HomeKit.** HomeKit Bridge sets up an accessory's controls when it creates it. After updating this server, reload HomeKit Bridge (**Settings → Devices & Services → HomeKit Bridge → ⋮ → Reload**) so changes such as new fan modes reach HomeKit. If an accessory still misbehaves, use the `homekit.reset_accessory` action on it.
+- **Removed devices.** Devices, scenes and entities removed in Arcus are removed from Home Assistant on the next sync. This only works for devices the server has seen since it last started: anything removed while it was down stays in Home Assistant as unavailable, and must be deleted there by hand.
 
 ## Architecture
 
@@ -165,7 +176,7 @@ A single device can match multiple mappers. For example, a thermostat matches bo
 ### MQTT Topics
 
 ```
-# Discovery (retained, published once per entity)
+# Discovery (retained; republished only when it changes, emptied to remove an entity)
 homeassistant/{component}/arcus/{object_id}/config
 
 # State (retained JSON, one per device, merged from all mappers)
@@ -174,19 +185,30 @@ arcus/{device_id}/state
 # Commands (HA → Arcus, per entity)
 arcus/{device_id}/{entity}/set
 
-# Availability (retained)
-arcus/{device_id}/availability
+# Availability (retained, online/offline)
+arcus/bridge/availability            # Arcus connection is up
+arcus/{device_id}/availability       # device is online (devconn:state)
+arcus/{hub_id}/connection            # hub is connected (hubconn:state)
+
+# Button presses (not retained)
+arcus/{device_id}/trigger
 
 # Alarm
 arcus/alarm/state
 arcus/alarm/set
+arcus/alarm/availability
+arcus/alarm/attributes               # bypassed sensors (JSON)
 
 # Scenes
 arcus/scene/{scene_id}/fired
 arcus/scene/{scene_id}/fire
 ```
 
-All state and discovery messages are published with `retain: true` so Home Assistant picks them up immediately on connect or restart.
+An entity is available only while every availability topic it lists is `online`: the bridge, the device itself, and for Zigbee and Z-Wave devices, the hub. The hub's own status entities don't depend on the hub connection topic, so they stay available and can report the hub as disconnected.
+
+`arcus` is the default `DEVICE_ID_PREFIX`; the alarm topics currently always use `arcus`.
+
+State, availability and discovery messages are retained so Home Assistant picks them up immediately on connect or restart. The embedded broker keeps retained messages in memory, and the server republishes everything when it starts.
 
 ## Development
 
