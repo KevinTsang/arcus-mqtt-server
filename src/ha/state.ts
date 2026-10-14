@@ -1,7 +1,7 @@
 import type { Broker } from '../broker.js';
 import type { ArcusDevice } from '../arcus/types.js';
 import type { Config } from '../config.js';
-import { DeviceConnection, HubConnection } from '../arcus/capabilities.js';
+import { DeviceConnection, Hub, HubConnection } from '../arcus/capabilities.js';
 import { matchingMappers } from '../mappers/index.js';
 import { stateTopic, availabilityTopic, bridgeAvailabilityTopic, hubConnectionTopic } from './topics.js';
 
@@ -92,4 +92,17 @@ export function publishHubConnection(broker: Broker, config: Config, hub: ArcusD
     },
     () => {},
   );
+}
+
+/** Clear a removed device's retained state and availability so nothing stale lingers on the broker */
+export function clearDeviceTopics(broker: Broker, config: Config, device: ArcusDevice): void {
+  const topics = [stateTopic(config, device.address), availabilityTopic(config, device.address)];
+  if (device.caps.has(Hub.NAMESPACE)) topics.push(hubConnectionTopic(config, device.address));
+
+  for (const topic of topics) {
+    broker.publish(
+      { cmd: 'publish', topic, payload: Buffer.alloc(0), qos: 0, dup: false, retain: true },
+      () => {},
+    );
+  }
 }

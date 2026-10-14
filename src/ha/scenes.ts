@@ -3,7 +3,8 @@ import type { ArcusClient } from '../arcus/client.js';
 import type { SceneInfo } from '../arcus/types.js';
 import type { Config } from '../config.js';
 import { discoveryTopic, bridgeAvailabilityTopic } from './topics.js';
-import { publishDiscoveryConfig } from './discovery.js';
+import type { HADiscoveryConfig } from './discovery.js';
+import { syncOwnedDiscovery } from './discovery.js';
 
 function sceneObjectId(scene: SceneInfo): string {
   // scene.id is like "{placeId}.1" — use just the number suffix
@@ -26,34 +27,42 @@ const SCENES_DEVICE = (config: Config) => ({
   manufacturer: 'Arcus',
 });
 
+/** Publish discovery for all scenes; scenes removed in Arcus are removed from HA */
 export function publishSceneDiscovery(broker: Broker, config: Config, scenes: SceneInfo[]): void {
   const device = SCENES_DEVICE(config);
+  const configs: HADiscoveryConfig[] = [];
 
   for (const scene of scenes) {
     const objectId = sceneObjectId(scene);
 
     // Device trigger (fires when scene runs on Arcus side)
-    const triggerTopic = discoveryTopic(config, 'device_automation', objectId);
-    publishDiscoveryConfig(broker, triggerTopic, {
-      automation_type: 'trigger',
-      type: 'scene_fired',
-      subtype: scene.name,
-      topic: sceneTriggerTopic(config, scene),
-      payload: 'fired',
-      device,
+    configs.push({
+      topic: discoveryTopic(config, 'device_automation', objectId),
+      payload: {
+        automation_type: 'trigger',
+        type: 'scene_fired',
+        subtype: scene.name,
+        topic: sceneTriggerTopic(config, scene),
+        payload: 'fired',
+        device,
+      },
     });
 
     // Button entity (press to fire scene from HA)
-    const buttonTopic = discoveryTopic(config, 'button', objectId);
-    publishDiscoveryConfig(broker, buttonTopic, {
-      name: scene.name,
-      unique_id: `${config.deviceIdPrefix}_${objectId}`,
-      command_topic: sceneCommandTopic(config, scene),
-      payload_press: 'PRESS',
-      availability_topic: bridgeAvailabilityTopic(config),
-      device,
+    configs.push({
+      topic: discoveryTopic(config, 'button', objectId),
+      payload: {
+        name: scene.name,
+        unique_id: `${config.deviceIdPrefix}_${objectId}`,
+        command_topic: sceneCommandTopic(config, scene),
+        payload_press: 'PRESS',
+        availability_topic: bridgeAvailabilityTopic(config),
+        device,
+      },
     });
   }
+
+  syncOwnedDiscovery(broker, 'scenes', configs);
 }
 
 export function setupSceneCommandHandler(

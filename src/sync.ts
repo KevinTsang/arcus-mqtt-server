@@ -4,8 +4,9 @@ import type { ArcusDevice, SceneInfo } from './arcus/types.js';
 import type { Config } from './config.js';
 import { matchingMappers } from './mappers/index.js';
 import { DeviceConnection, DeviceAdvanced, Hub, HubConnection } from './arcus/capabilities.js';
-import { publishState, publishAvailability, publishBridgeAvailability, publishHubConnection, isDeviceOnline } from './ha/state.js';
-import { publishDiscoveryConfig } from './ha/discovery.js';
+import { publishState, publishAvailability, publishBridgeAvailability, publishHubConnection, isDeviceOnline, clearDeviceTopics } from './ha/state.js';
+import type { HADiscoveryConfig } from './ha/discovery.js';
+import { syncOwnedDiscovery, removeOwnedDiscovery } from './ha/discovery.js';
 import { setupCommandHandler } from './ha/command.js';
 import { publishAlarmDiscovery, publishAlarmState, publishAlarmAvailability, setupAlarmCommandHandler } from './ha/alarm.js';
 import { publishSceneDiscovery, publishSceneFired, setupSceneCommandHandler } from './ha/scenes.js';
@@ -13,13 +14,13 @@ import { publishSceneDiscovery, publishSceneFired, setupSceneCommandHandler } fr
 /** Protocols whose devices pair through the hub (others, e.g. IPCD Wi-Fi devices, talk to the platform directly) */
 const HUB_PROTOCOLS = new Set(['ZIGB', 'ZWAV']);
 
-/** Publish HA MQTT Discovery config for a device (only configs that changed) */
+/** Publish HA MQTT Discovery config for a device (only configs that changed; stale ones are removed) */
 function publishDiscovery(broker: Broker, config: Config, device: ArcusDevice): void {
+  const configs: HADiscoveryConfig[] = [];
   for (const mapper of matchingMappers(device)) {
-    for (const disc of mapper.buildDiscovery(config, device)) {
-      publishDiscoveryConfig(broker, disc.topic, disc.payload);
-    }
+    configs.push(...mapper.buildDiscovery(config, device));
   }
+  syncOwnedDiscovery(broker, device.address, configs);
 }
 
 /** Perform a full sync: fetch devices, publish discovery + state + availability */
@@ -59,10 +60,13 @@ async function fullSync(
     freshAddresses.add(device.address);
     devices.set(device.address, device);
   }
-  // Remove devices no longer present
-  for (const address of devices.keys()) {
+  // Remove devices no longer present, from the map and from HA
+  for (const [address, device] of devices) {
     if (!freshAddresses.has(address)) {
       devices.delete(address);
+      removeOwnedDiscovery(broker, address);
+      clearDeviceTopics(broker, config, device);
+      console.log(`[Sync] Removed device: ${device.name} (${address})`);
     }
   }
 

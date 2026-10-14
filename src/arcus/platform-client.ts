@@ -154,9 +154,9 @@ export class PlatformArcusClient implements ArcusClient {
     const resp = await this.bridge.sendRequest(this.bridge.placeDestination, 'place:ListDevices', {});
     const rawDevices = resp.payload.attributes.devices as Record<string, unknown>[] | undefined;
 
+    // Throw rather than return []: an empty list would remove every device from HA
     if (!rawDevices || !Array.isArray(rawDevices)) {
-      console.warn('[PlatformClient] No devices returned from platform');
-      return [];
+      throw new Error(`place:ListDevices returned no device list (${resp.payload.messageType})`);
     }
 
     const devices = rawDevices.map(transformDevice);
@@ -220,9 +220,9 @@ export class PlatformArcusClient implements ArcusClient {
       placeId: this.placeId,
     });
     const rawScenes = resp.payload.attributes.scenes as Record<string, unknown>[] | undefined;
+    // Throw rather than return []: an empty list would remove every scene from HA
     if (!rawScenes || !Array.isArray(rawScenes)) {
-      console.warn('[PlatformClient] No scenes returned from platform');
-      return [];
+      throw new Error(`scene:ListScenes returned no scene list (${resp.payload.messageType})`);
     }
     const scenes = rawScenes
       .filter(s => s['scene:enabled'] === true)

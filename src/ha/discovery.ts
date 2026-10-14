@@ -62,6 +62,9 @@ export function buildAvailability(config: Config, device: ArcusDevice) {
 /** Last payload published per discovery topic, so unchanged configs aren't re-sent every poll */
 const publishedDiscovery = new Map<string, string>();
 
+/** Discovery topics last published by each owner (a device address, or e.g. 'scenes') */
+const discoveryByOwner = new Map<string, Set<string>>();
+
 /** Publish a retained discovery config, skipping it if the same payload was already published */
 export function publishDiscoveryConfig(broker: Broker, topic: string, payload: Record<string, unknown>): void {
   const json = JSON.stringify(payload);
@@ -79,4 +82,42 @@ export function publishDiscoveryConfig(broker: Broker, topic: string, payload: R
     },
     () => {},
   );
+}
+
+/** Remove a discovery config: an empty retained payload makes HA delete the entity */
+function removeDiscoveryConfig(broker: Broker, topic: string): void {
+  publishedDiscovery.delete(topic);
+  broker.publish(
+    {
+      cmd: 'publish',
+      topic,
+      payload: Buffer.alloc(0),
+      qos: 0,
+      dup: false,
+      retain: true,
+    },
+    () => {},
+  );
+}
+
+/**
+ * Publish an owner's full set of discovery configs, removing any it published
+ * before that are no longer in the set (e.g. a capability or scene went away).
+ */
+export function syncOwnedDiscovery(broker: Broker, owner: string, configs: HADiscoveryConfig[]): void {
+  const topics = new Set(configs.map(c => c.topic));
+  for (const disc of configs) {
+    publishDiscoveryConfig(broker, disc.topic, disc.payload);
+  }
+  for (const topic of discoveryByOwner.get(owner) ?? []) {
+    if (!topics.has(topic)) removeDiscoveryConfig(broker, topic);
+  }
+
+  if (topics.size > 0) discoveryByOwner.set(owner, topics);
+  else discoveryByOwner.delete(owner);
+}
+
+/** Remove every discovery config an owner published (e.g. the device was deleted) */
+export function removeOwnedDiscovery(broker: Broker, owner: string): void {
+  syncOwnedDiscovery(broker, owner, []);
 }
