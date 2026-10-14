@@ -33,7 +33,6 @@ Arcus Platform ──► Arcus MQTT Server ──► Embedded MQTT Broker ──
 | Power meter | `sensor` | Power (W) and cumulative energy (Wh) |
 | Hub | `binary_sensor`, `sensor` | Hub connectivity, mains power (off = running on battery), battery level |
 | Door lock | `lock` | Lock/unlock |
-| Camera | `camera` | Discovery only |
 | Temperature | `sensor` | Temperature reading |
 | Humidity | `sensor` | Humidity reading |
 | Battery | `sensor` | Battery percentage |
@@ -54,7 +53,7 @@ npm run build
 ARCUS_MOCK=1 npm start
 ```
 
-Starts the broker with 13 mock devices (switches, lights, thermostat, sensors, lock, camera, etc.). Point Home Assistant's MQTT integration at `localhost:1883` and devices appear automatically.
+Starts the broker with mock devices (switches, lights, thermostat, sensors, lock, hub, etc.). Point Home Assistant's MQTT integration at `localhost:1883` and devices appear automatically.
 
 ### API-Server Mode
 
@@ -147,7 +146,6 @@ src/
     ├── climate.ts        # therm → climate
     ├── binary-sensor.ts  # cont/mot/leakh2o/smoke/co/glass/tilt → binary_sensor
     ├── lock.ts           # doorlock → lock
-    ├── camera.ts         # camera → camera
     ├── sensor.ts         # temp/humid/battery/pow → sensor
     ├── device-trigger.ts # but → device_automation
     └── hub.ts            # hub connectivity/power/battery → binary_sensor, sensor

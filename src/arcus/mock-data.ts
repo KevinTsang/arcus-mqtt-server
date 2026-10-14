@@ -1,7 +1,7 @@
 import type { ArcusDevice } from './types.js';
 import {
   Base, Device, DevicePower, Switch, Dimmer, Thermostat, Temperature,
-  RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Camera, Button,
+  RelativeHumidity, Contact, Motion, DoorLock, LeakH2O, Button,
   MotorizedDoor, Smoke, CarbonMonoxide, Glass, Tilt, PowerUse,
   Hub, HubConnection, HubPower, DeviceAdvanced,
 } from './capabilities.js';
@@ -225,18 +225,6 @@ export function createMockDevices(): ArcusDevice[] {
         [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_BATTERY,
         [DevicePower.ATTR_BATTERY]: 70,
         [Device.ATTR_DEVTYPEHINT]: 'Tilt',
-      },
-    },
-
-    // --- Camera ---
-    {
-      address: 'DRIV:dev:camera-001',
-      name: 'Front Porch Camera',
-      type: 'Sercomm Indoor Camera',
-      caps: new Set([Base.NAMESPACE, Device.NAMESPACE, DevicePower.NAMESPACE, Camera.NAMESPACE]),
-      attributes: {
-        [DevicePower.ATTR_SOURCE]: DevicePower.SOURCE_LINE,
-        [Device.ATTR_DEVTYPEHINT]: 'Camera',
       },
     },
 
