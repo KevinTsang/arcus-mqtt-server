@@ -82,6 +82,9 @@ export class BridgeClient {
   onConnectionChange: ((connected: boolean) => void) | null = null;
 
   private _setConnected(connected: boolean): void {
+    // Reset backoff only once the session is usable, not merely when the socket
+    // opens, so a reconnect that keeps failing setup still backs off.
+    if (connected) this._reconnectAttempt = 0;
     if (this._connected === connected) return;
     this._connected = connected;
     this.onConnectionChange?.(connected);
@@ -197,7 +200,6 @@ export class BridgeClient {
 
       this.ws.on('open', () => {
         log('WebSocket connected');
-        this._reconnectAttempt = 0;
       });
 
       this.ws.on('ping', (data) => {
@@ -232,14 +234,23 @@ export class BridgeClient {
           // Re-set active place after reconnect (skip for api-server mode)
           if (this._reconnecting && this._activePlaceId && !this._autoPlace) {
             const placeId = this._activePlaceId;
+            const ws = this.ws;
             log(`Reconnected — re-setting active place ${placeId}`);
-            this.sendRequest('SERV:sess:', 'sess:SetActivePlace', { placeId }).then(
-              () => {
+            this.sendRequest('SERV:sess:', 'sess:SetActivePlace', { placeId })
+              .then((resp) => {
+                // An error reply resolves rather than rejects, so check for it explicitly
+                if (resp.payload?.messageType === 'Error') {
+                  throw new Error(JSON.stringify(resp.payload.attributes));
+                }
                 log('Active place restored after reconnect');
                 this._setConnected(true);
-              },
-              (err) => log(`Failed to restore active place: ${err.message}`),
-            );
+              })
+              .catch((err) => {
+                // Without an active place the session is useless; close it so the
+                // normal reconnect-with-backoff path retries.
+                log(`Failed to restore active place: ${err.message} — closing to retry`);
+                ws?.close();
+              });
           } else if (this._reconnecting) {
             this._setConnected(true);
           } else {
