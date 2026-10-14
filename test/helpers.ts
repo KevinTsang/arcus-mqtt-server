@@ -1,3 +1,4 @@
+import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { Broker } from '../src/broker.js';
@@ -78,30 +79,68 @@ export interface ArcusRequest {
   connection: number;
 }
 
-type Responder = (req: ArcusRequest) => { messageType: string; attributes: Record<string, unknown> };
+/** Return null to send no reply at all */
+type Responder = (req: ArcusRequest) => { messageType: string; attributes: Record<string, unknown> } | null;
+
+export interface Handshake {
+  path: string;
+  cookie?: string;
+  authorization?: string;
+}
 
 /**
- * A fake Arcus bridge WebSocket server. Sends SessionCreated on connect and
- * answers each request with the responder's reply.
+ * A fake Arcus bridge / API server. POST /login hands out irisAuthToken cookies,
+ * the WebSocket upgrade optionally checks the cookie or bearer token, sends
+ * SessionCreated on connect, and answers each request with the responder's reply.
  */
 export class FakeArcusServer {
   readonly requests: ArcusRequest[] = [];
+  /** Every WebSocket upgrade attempt, accepted or not */
+  readonly handshakes: Handshake[] = [];
+  /** Accepted WebSocket connections */
   connections = 0;
+  logins = 0;
+  /** Tokens (cookie or bearer) the server accepts, with a 401 for others; null accepts any */
+  validTokens: Set<string> | null = null;
+  /** When false, the server accepts upgrades but never sends SessionCreated */
+  sendSession = true;
   private sockets: WebSocket[] = [];
+  private http!: Server;
   private wss!: WebSocketServer;
 
   constructor(private respond: Responder) {}
 
   async start(): Promise<string> {
-    this.wss = new WebSocketServer({ port: 0 });
-    await new Promise<void>(resolve => this.wss.once('listening', () => resolve()));
+    this.http = createServer((req, res) => {
+      if (req.method === 'POST' && req.url === '/login') {
+        req.resume();
+        const token = `login-token-${++this.logins}`;
+        this.validTokens?.add(token);
+        res.writeHead(200, { 'Set-Cookie': `irisAuthToken=${token}; Path=/; HttpOnly` });
+        res.end();
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+    this.wss = new WebSocketServer({
+      server: this.http,
+      verifyClient: (info: { req: IncomingMessage }, cb: (ok: boolean, code?: number) => void) => {
+        const { cookie, authorization } = info.req.headers;
+        this.handshakes.push({ path: info.req.url ?? '', cookie, authorization });
+        const token = cookie?.match(/irisAuthToken=([^;]+)/)?.[1] ?? authorization?.replace(/^Bearer /, '');
+        cb(!this.validTokens || (!!token && this.validTokens.has(token)), 401);
+      },
+    });
     this.wss.on('connection', (ws) => {
       const connection = ++this.connections;
       this.sockets.push(ws);
-      ws.send(JSON.stringify({
-        headers: {},
-        payload: { messageType: 'SessionCreated', attributes: { personId: 'person-1', places: [{ placeId: 'place-1' }] } },
-      }));
+      if (this.sendSession) {
+        ws.send(JSON.stringify({
+          headers: {},
+          payload: { messageType: 'SessionCreated', attributes: { personId: 'person-1', places: [{ placeId: 'place-1' }] } },
+        }));
+      }
       ws.on('message', (raw) => {
         const msg = JSON.parse(raw.toString());
         const req: ArcusRequest = {
@@ -112,16 +151,23 @@ export class FakeArcusServer {
         };
         this.requests.push(req);
         const reply = this.respond(req);
+        if (reply === null) return;
         ws.send(JSON.stringify({ headers: { correlationId: msg.headers.correlationId }, payload: reply }));
       });
     });
-    const { port } = this.wss.address() as AddressInfo;
-    return `http://localhost:${port}`;
+    await new Promise<void>(resolve => this.http.listen(0, '127.0.0.1', () => resolve()));
+    const { port } = this.http.address() as AddressInfo;
+    return `http://127.0.0.1:${port}`;
   }
 
   /** Send an unsolicited event (e.g. base:ValueChange) on the latest connection */
   sendEvent(source: string, messageType: string, attributes: Record<string, unknown>): void {
-    this.sockets[this.sockets.length - 1].send(JSON.stringify({ headers: { source }, payload: { messageType, attributes } }));
+    this.send({ source }, messageType, attributes);
+  }
+
+  /** Send an unsolicited message with the given headers on the latest connection */
+  send(headers: Record<string, unknown>, messageType: string, attributes: Record<string, unknown>): void {
+    this.sockets[this.sockets.length - 1].send(JSON.stringify({ headers, payload: { messageType, attributes } }));
   }
 
   /** Drop the latest connection abruptly */
@@ -136,7 +182,11 @@ export class FakeArcusServer {
   async stop(): Promise<void> {
     for (const ws of this.sockets) ws.terminate();
     await new Promise<void>(resolve => this.wss.close(() => resolve()));
+    this.http.closeAllConnections();
+    await new Promise<void>(resolve => this.http.close(() => resolve()));
   }
 }
+
+export const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export const OK = { messageType: 'EmptyMessage', attributes: {} };
