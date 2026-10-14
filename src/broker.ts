@@ -1,19 +1,19 @@
-import aedes from 'aedes';
+import { Aedes } from 'aedes';
 import type { AuthenticateError } from 'aedes';
 import { createServer } from 'net';
 import { createServer as createTlsServer } from 'tls';
 import { readFileSync } from 'fs';
 import type { Config } from './config.js';
 
-export type Broker = InstanceType<typeof aedes>;
+export type Broker = Aedes;
 
 export interface BrokerContext {
   broker: Broker;
   close(): Promise<void>;
 }
 
-export function startBroker(config: Config): Promise<BrokerContext> {
-  const broker = new aedes();
+export async function startBroker(config: Config): Promise<BrokerContext> {
+  const broker = await Aedes.createBroker();
 
   // Optional authentication
   if (config.mqttUsername && config.mqttPassword) {

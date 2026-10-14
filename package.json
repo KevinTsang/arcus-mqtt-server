@@ -10,7 +10,7 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "aedes": "^0.51.3",
+    "aedes": "^1.2.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
