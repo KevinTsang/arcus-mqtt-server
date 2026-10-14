@@ -39,15 +39,19 @@ function supportsEco(device: ArcusDevice): boolean {
 }
 
 /**
- * Fan modes for HA. therm:fanmode is 0 for auto, or 1..maxfanspeed to run the fan
- * continuously at that speed. Most thermostats are single-speed (auto/on).
+ * Fan modes for HA. therm:fanmode is 0 for auto (fan runs only while heating or
+ * cooling), or 1..maxfanspeed to run the fan continuously at that speed.
+ *
+ * Mode 0 is labelled 'off' rather than 'auto': HA's HomeKit bridge rejects the
+ * fan's on/off toggle unless an 'off' mode exists, and Arcus has only these two
+ * states, so 'off' here means "not forced on".
  */
 function fanModes(device: ArcusDevice): Array<{ ha: string; speed: number }> {
   const max = Math.max(1, Number(device.attributes[Thermostat.ATTR_MAXFANSPEED] ?? 1));
-  if (max === 1) return [{ ha: 'auto', speed: 0 }, { ha: 'on', speed: 1 }];
-  if (max === 2) return [{ ha: 'auto', speed: 0 }, { ha: 'low', speed: 1 }, { ha: 'high', speed: 2 }];
+  if (max === 1) return [{ ha: 'off', speed: 0 }, { ha: 'on', speed: 1 }];
+  if (max === 2) return [{ ha: 'off', speed: 0 }, { ha: 'low', speed: 1 }, { ha: 'high', speed: 2 }];
   return [
-    { ha: 'auto', speed: 0 },
+    { ha: 'off', speed: 0 },
     { ha: 'low', speed: 1 },
     { ha: 'medium', speed: Math.round((1 + max) / 2) },
     { ha: 'high', speed: max },
@@ -57,7 +61,7 @@ function fanModes(device: ArcusDevice): Array<{ ha: string; speed: number }> {
 function fanModeState(device: ArcusDevice): string {
   const speed = Number(device.attributes[Thermostat.ATTR_FANMODE] ?? 0);
   const modes = fanModes(device);
-  if (speed <= 0) return 'auto';
+  if (speed <= 0) return 'off';
   // Pick the closest listed speed, for speeds between the ones offered to HA
   return modes.slice(1).reduce((best, m) => (Math.abs(m.speed - speed) < Math.abs(best.speed - speed) ? m : best)).ha;
 }
@@ -184,6 +188,8 @@ export const climateMapper: Mapper = {
         return { [Thermostat.ATTR_HVACMODE]: fallback };
       }
       case 'climate_fan_mode': {
+        // 'auto' was mode 0's earlier name; keep accepting it for existing automations
+        if (payload === 'auto') return { [Thermostat.ATTR_FANMODE]: 0 };
         const mode = fanModes(device).find(m => m.ha === payload);
         return mode ? { [Thermostat.ATTR_FANMODE]: mode.speed } : null;
       }
