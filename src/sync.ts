@@ -108,10 +108,35 @@ export async function startSync(
   // Entities stay unavailable until the first sync succeeds
   publishBridgeAvailability(broker, config, false);
 
+  // Only one full sync runs at a time. A request that arrives mid-sync (e.g. a
+  // reconnect during a poll) shares the running sync and makes it run once more.
+  let syncing: Promise<void> | null = null;
+  let rerun = false;
+
   /** Full sync, then mark the bridge online if the connection is still up */
-  const syncAndMarkOnline = async (): Promise<void> => {
-    await fullSync(broker, config, client, devices, scenes);
-    if (connected) publishBridgeAvailability(broker, config, true);
+  const syncAndMarkOnline = (): Promise<void> => {
+    if (syncing) {
+      rerun = true;
+      return syncing;
+    }
+    syncing = (async () => {
+      try {
+        do {
+          rerun = false;
+          try {
+            await fullSync(broker, config, client, devices, scenes);
+            if (connected) publishBridgeAvailability(broker, config, true);
+          } catch (err) {
+            // A sync requested meanwhile (typically a reconnect) supersedes this failure
+            if (!rerun) throw err;
+            console.warn('[Sync] Sync failed, rerunning for a newer request:', err);
+          }
+        } while (rerun);
+      } finally {
+        syncing = null;
+      }
+    })();
+    return syncing;
   };
 
   // Upstream connection drops mark every entity unavailable; a reconnect resyncs
