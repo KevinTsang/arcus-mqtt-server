@@ -34,6 +34,11 @@ export function bridgeAvailabilityTopic(config: Config): string {
   return `${config.deviceIdPrefix}/bridge/availability`;
 }
 
+/** Hub connection topic: arcus/<hub_id>/connection — online while the hub is connected to the platform */
+export function hubConnectionTopic(config: Config, hubAddress: string): string {
+  return `${config.deviceIdPrefix}/${deviceId(hubAddress)}/connection`;
+}
+
 /** Availability topic: arcus/<device_id>/availability */
 export function availabilityTopic(config: Config, address: string): string {
   return `${config.deviceIdPrefix}/${deviceId(address)}/availability`;

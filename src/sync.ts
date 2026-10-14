@@ -3,8 +3,8 @@ import type { ArcusClient } from './arcus/client.js';
 import type { ArcusDevice, SceneInfo } from './arcus/types.js';
 import type { Config } from './config.js';
 import { matchingMappers } from './mappers/index.js';
-import { DeviceConnection, DeviceAdvanced, Hub } from './arcus/capabilities.js';
-import { publishState, publishAvailability, publishBridgeAvailability, isDeviceOnline } from './ha/state.js';
+import { DeviceConnection, DeviceAdvanced, Hub, HubConnection } from './arcus/capabilities.js';
+import { publishState, publishAvailability, publishBridgeAvailability, publishHubConnection, isDeviceOnline } from './ha/state.js';
 import { publishDiscoveryConfig } from './ha/discovery.js';
 import { setupCommandHandler } from './ha/command.js';
 import { publishAlarmDiscovery, publishAlarmState, publishAlarmAvailability, setupAlarmCommandHandler } from './ha/alarm.js';
@@ -49,6 +49,8 @@ async function fullSync(
       if (HUB_PROTOCOLS.has(String(protocol))) device.hubAddress = hub.address;
     }
     deviceList.push(hub);
+    // Before device discovery, so hub-paired devices don't start out waiting on this topic
+    publishHubConnection(broker, config, hub);
   }
 
   // Update the devices map in-place (don't clear — avoids dropping real-time events mid-sync)
@@ -157,6 +159,11 @@ export async function startSync(
 
     // Re-publish state immediately
     publishState(broker, config, device);
+
+    if (HubConnection.ATTR_STATE in attributes && device.caps.has(Hub.NAMESPACE)) {
+      publishHubConnection(broker, config, device);
+      console.log(`[Sync] Hub is now ${attributes[HubConnection.ATTR_STATE]}`);
+    }
 
     if (DeviceConnection.ATTR_STATE in attributes) {
       publishAvailability(broker, config, device);

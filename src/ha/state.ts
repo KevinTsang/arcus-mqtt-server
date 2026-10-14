@@ -1,9 +1,9 @@
 import type { Broker } from '../broker.js';
 import type { ArcusDevice } from '../arcus/types.js';
 import type { Config } from '../config.js';
-import { DeviceConnection } from '../arcus/capabilities.js';
+import { DeviceConnection, HubConnection } from '../arcus/capabilities.js';
 import { matchingMappers } from '../mappers/index.js';
-import { stateTopic, availabilityTopic, bridgeAvailabilityTopic } from './topics.js';
+import { stateTopic, availabilityTopic, bridgeAvailabilityTopic, hubConnectionTopic } from './topics.js';
 
 /** Publish the combined JSON state for a device across all matching mappers */
 export function publishState(
@@ -69,6 +69,22 @@ export function publishBridgeAvailability(broker: Broker, config: Config, online
     {
       cmd: 'publish',
       topic: bridgeAvailabilityTopic(config),
+      payload: Buffer.from(online ? 'online' : 'offline'),
+      qos: 0,
+      dup: false,
+      retain: true,
+    },
+    () => {},
+  );
+}
+
+/** Publish whether the hub is connected, which gates the availability of its Zigbee/Z-Wave devices */
+export function publishHubConnection(broker: Broker, config: Config, hub: ArcusDevice): void {
+  const online = hub.attributes[HubConnection.ATTR_STATE] === HubConnection.STATE_ONLINE;
+  broker.publish(
+    {
+      cmd: 'publish',
+      topic: hubConnectionTopic(config, hub.address),
       payload: Buffer.from(online ? 'online' : 'offline'),
       qos: 0,
       dup: false,
