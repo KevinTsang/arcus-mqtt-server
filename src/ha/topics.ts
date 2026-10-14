@@ -29,6 +29,11 @@ export function commandTopic(
   return `${config.deviceIdPrefix}/${deviceId(address)}/${entity}/set`;
 }
 
+/** Bridge-wide availability topic: arcus/bridge/availability */
+export function bridgeAvailabilityTopic(config: Config): string {
+  return `${config.deviceIdPrefix}/bridge/availability`;
+}
+
 /** Availability topic: arcus/<device_id>/availability */
 export function availabilityTopic(config: Config, address: string): string {
   return `${config.deviceIdPrefix}/${deviceId(address)}/availability`;

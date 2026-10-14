@@ -31,7 +31,7 @@ export const lockMapper: Mapper = {
           state_locked: 'LOCKED',
           state_unlocked: 'UNLOCKED',
           device: buildDeviceInfo(config, device),
-          availability: buildAvailability(config, device),
+          ...buildAvailability(config, device),
         },
       },
     ];

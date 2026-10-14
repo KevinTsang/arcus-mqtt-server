@@ -11,6 +11,9 @@ export interface ArcusClient {
   /** Start listening for real-time device events */
   connect(): Promise<void>;
 
+  /** Register a callback for the upstream connection dropping (false) or being restored (true) */
+  onConnectionChange(handler: (connected: boolean) => void): void;
+
   /** Register a callback for device attribute changes */
   onDeviceEvent(handler: (address: string, attributes: ArcusAttributes) => void): void;
 
@@ -75,6 +78,10 @@ export class MockArcusClient implements ArcusClient {
 
   onDeviceEvent(handler: (address: string, attributes: ArcusAttributes) => void): void {
     this.eventHandlers.push(handler);
+  }
+
+  onConnectionChange(_handler: (connected: boolean) => void): void {
+    // No-op in mock mode: the mock connection never drops
   }
 
   async getAlarmState(): Promise<AlarmState> {

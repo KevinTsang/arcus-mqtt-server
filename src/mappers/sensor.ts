@@ -91,7 +91,7 @@ export const sensorMapper: Mapper = {
           unit_of_measurement: def.unit,
           state_class: def.stateClass,
           device: buildDeviceInfo(config, device),
-          availability: buildAvailability(config, device),
+          ...buildAvailability(config, device),
         },
       });
     }

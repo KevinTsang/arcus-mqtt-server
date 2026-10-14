@@ -70,9 +70,22 @@ export class BridgeClient {
   private _reconnecting = false;
   private _reconnectAttempt = 0;
   private _intentionalClose = false;
+  private _connected = false;
 
   /** Optional callback fired for every unsolicited (non-response) message */
   onEvent: ((event: BridgeEvent) => void) | null = null;
+
+  /**
+   * Optional callback fired when an established session drops (false) and when an
+   * automatic reconnect is ready for requests again (true). Not fired for the initial connect.
+   */
+  onConnectionChange: ((connected: boolean) => void) | null = null;
+
+  private _setConnected(connected: boolean): void {
+    if (this._connected === connected) return;
+    this._connected = connected;
+    this.onConnectionChange?.(connected);
+  }
 
   get session(): SessionInfo | null {
     return this._session;
@@ -221,9 +234,17 @@ export class BridgeClient {
             const placeId = this._activePlaceId;
             log(`Reconnected — re-setting active place ${placeId}`);
             this.sendRequest('SERV:sess:', 'sess:SetActivePlace', { placeId }).then(
-              () => log('Active place restored after reconnect'),
+              () => {
+                log('Active place restored after reconnect');
+                this._setConnected(true);
+              },
               (err) => log(`Failed to restore active place: ${err.message}`),
             );
+          } else if (this._reconnecting) {
+            this._setConnected(true);
+          } else {
+            // Initial connect: the caller finishes setup, so don't notify
+            this._connected = true;
           }
           this._reconnecting = false;
 
@@ -267,6 +288,7 @@ export class BridgeClient {
         }
 
         this._session = null;
+        this._setConnected(false);
 
         // Auto-reconnect unless intentionally closed
         if (!this._intentionalClose && this._baseUrl && (this.token || this._autoPlace)) {

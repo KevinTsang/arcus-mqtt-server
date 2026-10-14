@@ -2,7 +2,7 @@ import type { Broker } from '../broker.js';
 import type { ArcusClient } from '../arcus/client.js';
 import type { SceneInfo } from '../arcus/types.js';
 import type { Config } from '../config.js';
-import { discoveryTopic } from './topics.js';
+import { discoveryTopic, bridgeAvailabilityTopic } from './topics.js';
 
 function sceneObjectId(scene: SceneInfo): string {
   // scene.id is like "{placeId}.1" — use just the number suffix
@@ -63,6 +63,7 @@ export function publishSceneDiscovery(broker: Broker, config: Config, scenes: Sc
           unique_id: `${config.deviceIdPrefix}_${objectId}`,
           command_topic: sceneCommandTopic(config, scene),
           payload_press: 'PRESS',
+          availability_topic: bridgeAvailabilityTopic(config),
           device,
         })),
         qos: 0,

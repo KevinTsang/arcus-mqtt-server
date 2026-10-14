@@ -1,6 +1,6 @@
 import type { ArcusDevice } from '../arcus/types.js';
 import type { Config } from '../config.js';
-import { deviceId, availabilityTopic } from './topics.js';
+import { deviceId, availabilityTopic, bridgeAvailabilityTopic } from './topics.js';
 
 export interface HADiscoveryConfig {
   /** HA MQTT Discovery topic */
@@ -25,12 +25,24 @@ export function buildDeviceInfo(config: Config, device: ArcusDevice): HADeviceIn
   };
 }
 
+/**
+ * Availability fields for a discovery payload. An entity is available only while
+ * both the bridge's Arcus connection and the device itself are online.
+ */
 export function buildAvailability(config: Config, device: ArcusDevice) {
-  return [
-    {
-      topic: availabilityTopic(config, device.address),
-      payload_available: 'online',
-      payload_not_available: 'offline',
-    },
-  ];
+  return {
+    availability: [
+      {
+        topic: bridgeAvailabilityTopic(config),
+        payload_available: 'online',
+        payload_not_available: 'offline',
+      },
+      {
+        topic: availabilityTopic(config, device.address),
+        payload_available: 'online',
+        payload_not_available: 'offline',
+      },
+    ],
+    availability_mode: 'all',
+  };
 }

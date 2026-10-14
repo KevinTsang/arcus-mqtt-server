@@ -102,7 +102,7 @@ export const binarySensorMapper: Mapper = {
           payload_off: 'OFF',
           device_class: deviceClass,
           device: buildDeviceInfo(config, device),
-          availability: buildAvailability(config, device),
+          ...buildAvailability(config, device),
         },
       });
     }

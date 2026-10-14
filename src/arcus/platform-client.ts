@@ -41,10 +41,17 @@ export class PlatformArcusClient implements ArcusClient {
   private eventHandlers: Array<(address: string, attributes: ArcusAttributes) => void> = [];
   private alarmHandlers: Array<(state: AlarmState) => void> = [];
   private sceneHandlers: Array<(sceneAddress: string) => void> = [];
+  private connectionHandlers: Array<(connected: boolean) => void> = [];
 
   constructor(config: Config) {
     this.config = config;
     this.bridge = new BridgeClient();
+
+    this.bridge.onConnectionChange = (connected) => {
+      for (const handler of this.connectionHandlers) {
+        handler(connected);
+      }
+    };
 
     // Wire up real-time events
     this.bridge.onEvent = (event) => {
@@ -175,6 +182,10 @@ export class PlatformArcusClient implements ArcusClient {
 
   onDeviceEvent(handler: (address: string, attributes: ArcusAttributes) => void): void {
     this.eventHandlers.push(handler);
+  }
+
+  onConnectionChange(handler: (connected: boolean) => void): void {
+    this.connectionHandlers.push(handler);
   }
 
   async getAlarmState(): Promise<AlarmState> {

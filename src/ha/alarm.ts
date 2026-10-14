@@ -2,7 +2,7 @@ import type { Broker } from '../broker.js';
 import type { ArcusClient } from '../arcus/client.js';
 import type { AlarmState } from '../arcus/types.js';
 import type { Config } from '../config.js';
-import { discoveryTopic } from './topics.js';
+import { discoveryTopic, bridgeAvailabilityTopic } from './topics.js';
 
 const ALARM_STATE_TOPIC = 'arcus/alarm/state';
 const ALARM_COMMAND_TOPIC = 'arcus/alarm/set';
@@ -33,9 +33,12 @@ export function publishAlarmDiscovery(broker: Broker, config: Config): void {
     object_id: `${config.deviceIdPrefix}_alarm`,
     state_topic: ALARM_STATE_TOPIC,
     command_topic: ALARM_COMMAND_TOPIC,
-    availability_topic: ALARM_AVAILABILITY_TOPIC,
-    payload_available: 'online',
-    payload_not_available: 'offline',
+    // Available only while both the bridge's Arcus connection and the alarm state fetch are good
+    availability: [
+      { topic: bridgeAvailabilityTopic(config), payload_available: 'online', payload_not_available: 'offline' },
+      { topic: ALARM_AVAILABILITY_TOPIC, payload_available: 'online', payload_not_available: 'offline' },
+    ],
+    availability_mode: 'all',
     supported_features: ['arm_home', 'arm_away'],
     code_arm_required: false,
     code_disarm_required: false,

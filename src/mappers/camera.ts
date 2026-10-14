@@ -24,7 +24,7 @@ export const cameraMapper: Mapper = {
           unique_id: objectId,
           object_id: objectId,
           device: buildDeviceInfo(config, device),
-          availability: buildAvailability(config, device),
+          ...buildAvailability(config, device),
         },
       },
     ];

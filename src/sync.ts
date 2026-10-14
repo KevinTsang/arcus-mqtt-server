@@ -3,7 +3,8 @@ import type { ArcusClient } from './arcus/client.js';
 import type { ArcusDevice, SceneInfo } from './arcus/types.js';
 import type { Config } from './config.js';
 import { matchingMappers } from './mappers/index.js';
-import { publishState, publishAvailability } from './ha/state.js';
+import { DeviceConnection } from './arcus/capabilities.js';
+import { publishState, publishAvailability, publishBridgeAvailability, isDeviceOnline } from './ha/state.js';
 import { setupCommandHandler } from './ha/command.js';
 import { publishAlarmDiscovery, publishAlarmState, publishAlarmAvailability, setupAlarmCommandHandler } from './ha/alarm.js';
 import { publishSceneDiscovery, publishSceneFired, setupSceneCommandHandler } from './ha/scenes.js';
@@ -58,7 +59,7 @@ async function fullSync(
   for (const device of deviceList) {
     publishDiscovery(broker, config, device);
     publishState(broker, config, device);
-    publishAvailability(broker, config, device, true);
+    publishAvailability(broker, config, device);
   }
 
   // Sync alarm: discovery + state + availability
@@ -69,6 +70,7 @@ async function fullSync(
     publishAlarmAvailability(broker, true);
   } catch (err) {
     console.error('[Sync] Alarm state fetch error:', err);
+    publishAlarmAvailability(broker, false);
   }
 
   // Sync scenes: refresh list + publish discovery
@@ -90,6 +92,31 @@ export async function startSync(
 ): Promise<{ stop(): void }> {
   const devices = new Map<string, ArcusDevice>();
   const scenes: SceneInfo[] = [];
+  let connected = false;
+
+  // Entities stay unavailable until the first sync succeeds
+  publishBridgeAvailability(broker, config, false);
+
+  /** Full sync, then mark the bridge online if the connection is still up */
+  const syncAndMarkOnline = async (): Promise<void> => {
+    await fullSync(broker, config, client, devices, scenes);
+    if (connected) publishBridgeAvailability(broker, config, true);
+  };
+
+  // Upstream connection drops mark every entity unavailable; a reconnect resyncs
+  // to pick up anything that changed during the outage.
+  client.onConnectionChange((up) => {
+    connected = up;
+    if (!up) {
+      console.warn('[Sync] Arcus connection lost, marking bridge offline');
+      publishBridgeAvailability(broker, config, false);
+      return;
+    }
+    console.log('[Sync] Arcus connection restored, resyncing');
+    syncAndMarkOnline().catch((err) => {
+      console.error('[Sync] Resync after reconnect failed:', err);
+    });
+  });
 
   // Set up command handling (HA → Arcus)
   setupCommandHandler(broker, config, client, devices);
@@ -116,10 +143,19 @@ export async function startSync(
     }
 
     // Update local state
+    const wasOnline = isDeviceOnline(device);
     Object.assign(device.attributes, attributes);
 
     // Re-publish state immediately
     publishState(broker, config, device);
+
+    if (DeviceConnection.ATTR_STATE in attributes) {
+      publishAvailability(broker, config, device);
+      const online = isDeviceOnline(device);
+      if (online !== wasOnline) {
+        console.log(`[Sync] ${device.name} (${address}) is now ${online ? 'online' : 'offline'}`);
+      }
+    }
 
     // Fire any event-driven mappers (e.g. button triggers)
     for (const mapper of matchingMappers(device)) {
@@ -131,14 +167,17 @@ export async function startSync(
 
   // Connect to the upstream client
   await client.connect();
+  connected = true;
 
   // Initial full sync (includes alarm discovery + state + scenes)
-  await fullSync(broker, config, client, devices, scenes);
+  await syncAndMarkOnline();
 
-  // Periodic poll
+  // Periodic poll, a safety net for missed events; skipped while disconnected
+  // since the reconnect handler resyncs.
   const interval = setInterval(async () => {
+    if (!connected) return;
     try {
-      await fullSync(broker, config, client, devices, scenes);
+      await syncAndMarkOnline();
     } catch (err) {
       console.error('[Sync] Poll error:', err);
     }

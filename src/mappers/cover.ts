@@ -36,7 +36,7 @@ export const coverMapper: Mapper = {
           // Motorized doors can't stop mid-travel; hide the stop button
           payload_stop: null,
           device: buildDeviceInfo(config, device),
-          availability: buildAvailability(config, device),
+          ...buildAvailability(config, device),
         },
       },
     ];

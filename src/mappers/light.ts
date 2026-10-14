@@ -33,7 +33,7 @@ export const lightMapper: Mapper = {
           brightness_command_topic: commandTopic(config, device.address, 'light_brightness'),
           brightness_scale: 100,
           device: buildDeviceInfo(config, device),
-          availability: buildAvailability(config, device),
+          ...buildAvailability(config, device),
         },
       },
     ];

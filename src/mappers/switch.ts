@@ -31,7 +31,7 @@ export const switchMapper: Mapper = {
           state_on: 'ON',
           state_off: 'OFF',
           device: buildDeviceInfo(config, device),
-          availability: buildAvailability(config, device),
+          ...buildAvailability(config, device),
         },
       },
     ];

@@ -67,7 +67,7 @@ export const climateMapper: Mapper = {
           action_template: '{{ value_json.climate_action }}',
           temp_step: 0.5,
           device: buildDeviceInfo(config, device),
-          availability: buildAvailability(config, device),
+          ...buildAvailability(config, device),
         },
       },
     ];
