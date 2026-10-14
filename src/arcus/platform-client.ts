@@ -1,6 +1,7 @@
 import type { Config } from '../config.js';
 import type { ArcusClient } from './client.js';
 import type { ArcusDevice, ArcusAttributes, AlarmState, SceneInfo } from './types.js';
+import { isAttributeValue } from './types.js';
 import { BridgeClient, throwIfErrorResponse } from './bridge-client.js';
 import { SecuritySubsystem } from './capabilities.js';
 
@@ -17,7 +18,7 @@ function transformDevice(raw: Record<string, unknown>): ArcusDevice {
   const attributes: ArcusAttributes = {};
   for (const [key, value] of Object.entries(raw)) {
     const namespace = key.split(':')[0];
-    if (caps.has(namespace) && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
+    if (caps.has(namespace) && isAttributeValue(value)) {
       attributes[key] = value;
     }
   }
@@ -67,7 +68,7 @@ export class PlatformArcusClient implements ArcusClient {
 
       const changed: ArcusAttributes = {};
       for (const [key, value] of Object.entries(event.attributes)) {
-        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        if (isAttributeValue(value)) {
           changed[key] = value;
         }
       }

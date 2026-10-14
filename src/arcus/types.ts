@@ -1,5 +1,14 @@
+/** A single Arcus attribute value; lists are kept only when they hold strings (e.g. therm:supportedmodes) */
+export type ArcusAttributeValue = string | number | boolean | string[];
+
 /** A key-value map of Arcus capability attributes, e.g. { "swit:state": "ON" } */
-export type ArcusAttributes = Record<string, string | number | boolean>;
+export type ArcusAttributes = Record<string, ArcusAttributeValue>;
+
+/** Narrow a raw platform value to a supported attribute value */
+export function isAttributeValue(value: unknown): value is ArcusAttributeValue {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return true;
+  return Array.isArray(value) && value.every(v => typeof v === 'string');
+}
 
 /** Capabilities are identified by their namespace prefix (e.g. "swit", "dim", "therm") */
 export type ArcusCapability = string;
